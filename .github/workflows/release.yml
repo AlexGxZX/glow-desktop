@@ -1,0 +1,55 @@
+# Сборка релиза Glow для Windows.
+# Запуск: создать тег вида v1.10.0 и отправить его (git tag v1.10.0 && git push origin v1.10.0)
+# или вручную во вкладке Actions → Release → Run workflow.
+# Результат — черновик релиза с установщиком и latest.json для автообновления.
+# Проверь черновик и нажми «Publish release» — после этого у всех Glow предложит обновиться.
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Зависимости
+        run: npm install
+
+      - name: Тесты
+        run: npm test
+
+      - name: Сборка и черновик релиза
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: v__VERSION__
+          releaseName: Glow __VERSION__
+          releaseBody: |
+            ## Что нового
+            -
+
+            Установщик — файл `…_x64-setup.exe` ниже. Если Glow уже стоит, он сам предложит обновиться.
+          releaseDraft: true
+          prerelease: false
+          args: --config src-tauri/tauri.release.conf.json

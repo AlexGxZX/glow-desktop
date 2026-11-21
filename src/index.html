@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Glow</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="style-aura">
+  <div id="bg-art" aria-hidden="true"></div>
+  <div id="bg-glow" aria-hidden="true"></div>
+  <!-- Эффект линзы для стекла: фон по краям панелей слегка искажается -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <filter id="glass-lens" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.006 0.012" numOctaves="2" seed="7" result="noise"/>
+      <feGaussianBlur in="noise" stdDeviation="2" result="soft"/>
+      <feDisplacementMap in="SourceGraphic" in2="soft" scale="38" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </svg>
+  <canvas id="bg-fx" aria-hidden="true"></canvas>
+
+  <div id="app">
+    <header class="titlebar" data-tauri-drag-region>
+      <button class="tb-btn tb-nav" id="btn-nav" title="Боковое меню (Ctrl+B)" data-icon="sidebar"></button>
+      <div class="brand" data-tauri-drag-region><span class="brand-dot"></span>Glow</div>
+      <div class="search">
+        <span class="search-ico" data-icon="search"></span>
+        <input id="search" type="text" placeholder="Поиск: трек, исполнитель, альбом" spellcheck="false" autocomplete="off" />
+      </div>
+      <div class="tb-fill" data-tauri-drag-region></div>
+      <button class="tb-btn" id="btn-mini" title="Мини-плеер" data-icon="mini"></button>
+      <button class="tb-btn" id="win-min" title="Свернуть" data-icon="minimize"></button>
+      <button class="tb-btn" id="win-max" title="Развернуть" data-icon="maximize"></button>
+      <button class="tb-btn tb-close" id="win-close" title="Закрыть" data-icon="close"></button>
+    </header>
+
+    <aside class="sidebar" id="sidebar"></aside>
+
+    <div id="main-wrap">
+      <div class="scroll-head" id="scroll-head"><span class="sh-title" id="sh-title"></span><button class="btn" id="sh-play" data-icon="play"></button><button class="btn" id="sh-top">Наверх</button></div>
+      <main id="content" tabindex="-1"></main>
+    </div>
+
+    <aside id="queue" class="queue hidden">
+      <div class="queue-head">
+        <div class="heading">Очередь</div>
+        <button class="btn-text" id="queue-clear">Очистить</button>
+        <button class="icon-btn" id="queue-close" data-icon="close"></button>
+      </div>
+      <div id="queue-list" class="queue-list"></div>
+    </aside>
+
+    <footer class="playerbar" id="playerbar">
+      <div class="pb-left">
+        <button class="pb-cover" id="pb-cover" title="Экран воспроизведения"></button>
+        <div class="pb-info">
+          <div class="pb-title body-strong" id="pb-title">Ничего не играет</div>
+          <div class="pb-artist" id="pb-artist"></div>
+          <div class="pb-tech" id="pb-tech"></div>
+        </div>
+        <button class="icon-btn" id="pb-fav" data-icon="heart" title="В избранное (L)"></button>
+      </div>
+      <div class="pb-center">
+        <div class="controls">
+          <button class="icon-btn" id="c-shuffle" data-icon="shuffle" title="Перемешать (S)"></button>
+          <button class="icon-btn" id="c-prev" data-icon="prev" title="Назад (Ctrl+←)"></button>
+          <button class="play-btn" id="c-play" data-icon="play" title="Пауза (Пробел)"></button>
+          <button class="icon-btn" id="c-next" data-icon="next" title="Дальше (Ctrl+→)"></button>
+          <button class="icon-btn" id="c-repeat" data-icon="repeat" title="Повтор (R)"></button>
+        </div>
+        <div class="progress-row">
+          <span class="time" id="t-cur">0:00</span>
+          <div class="slider progress" id="progress"><div class="sl-fill"></div><div class="sl-thumb"></div></div>
+          <span class="time" id="t-dur">0:00</span>
+        </div>
+      </div>
+      <div class="pb-right">
+        <canvas class="pb-meter" id="pb-meter" width="240" height="64" title="Спектр и уровни L/R"></canvas>
+        <button class="icon-btn" id="b-lyrics" data-icon="lyrics" title="Текст песни"></button>
+        <button class="icon-btn" id="b-timer" data-icon="timer" title="Таймер сна"></button>
+        <button class="icon-btn" id="b-eq" data-icon="eq" title="Эквалайзер и звук"></button>
+        <button class="icon-btn" id="b-queue" data-icon="queue" title="Очередь (Q)"></button>
+        <button class="icon-btn" id="b-mute" data-icon="volume" title="Без звука (M)"></button>
+        <div class="slider volume" id="volume"><div class="sl-fill"></div><div class="sl-thumb"></div></div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Экран воспроизведения -->
+  <section id="now" class="now hidden" aria-label="Сейчас играет">
+    <div class="now-blur" id="now-blur"></div>
+    <canvas id="fx"></canvas>
+    <div class="now-top" data-tauri-drag-region>
+      <button class="icon-btn" id="now-close" data-icon="down" title="Свернуть (Esc)"></button>
+      <div class="now-src overline" id="now-src" data-tauri-drag-region></div>
+      <button class="icon-btn" id="now-lyrics" data-icon="lyrics" title="Текст песни"></button>
+      <button class="icon-btn" id="now-more" data-icon="more" title="Ещё"></button>
+    </div>
+    <div class="now-body">
+      <div class="now-left">
+        <div class="now-cover" id="now-cover"></div>
+        <div class="now-meta">
+          <div class="now-title" id="now-title"></div>
+          <div class="now-artist" id="now-artist"></div>
+          <div class="now-tech" id="now-tech"></div>
+          <div class="now-acts">
+            <div class="stars" id="now-stars"></div>
+            <button class="icon-btn" id="now-fav" data-icon="heart"></button>
+          </div>
+        </div>
+      </div>
+      <div class="now-right" id="now-right"></div>
+    </div>
+    <div class="now-bottom">
+      <div class="progress-row">
+        <span class="time" id="n-cur">0:00</span>
+        <div class="slider progress big" id="n-progress"><div class="sl-fill"></div><div class="sl-thumb"></div></div>
+        <span class="time" id="n-dur">0:00</span>
+      </div>
+      <div class="controls big">
+        <button class="icon-btn" id="n-shuffle" data-icon="shuffle"></button>
+        <button class="icon-btn" id="n-prev" data-icon="prev"></button>
+        <button class="play-btn" id="n-play" data-icon="play"></button>
+        <button class="icon-btn" id="n-next" data-icon="next"></button>
+        <button class="icon-btn" id="n-repeat" data-icon="repeat"></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Мини-плеер -->
+  <section id="mini" class="mini-player" data-tauri-drag-region>
+    <div class="mini-cover" id="mini-cover" data-tauri-drag-region></div>
+    <div class="mini-main" data-tauri-drag-region>
+      <div class="mini-title body-strong" id="mini-title" data-tauri-drag-region></div>
+      <div class="mini-artist" id="mini-artist" data-tauri-drag-region></div>
+      <div class="mini-ctrl">
+        <button class="icon-btn" id="m-prev" data-icon="prev"></button>
+        <button class="play-btn small" id="m-play" data-icon="play"></button>
+        <button class="icon-btn" id="m-next" data-icon="next"></button>
+        <div class="mini-fill" data-tauri-drag-region></div>
+        <button class="icon-btn" id="m-expand" data-icon="expand" title="Обычное окно"></button>
+      </div>
+      <div class="mini-progress"><div id="mini-bar"></div></div>
+    </div>
+  </section>
+
+  <aside id="editor" class="editor hidden" aria-label="Редактор стиля"></aside>
+  <div id="menu" class="menu hidden"></div>
+  <div id="modal-root"></div>
+  <div id="toast" class="toast"></div>
+
+  <script type="module" src="js/boot.js"></script>
+</body>
+</html>
