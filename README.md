@@ -5,7 +5,7 @@
 **Музыкальный плеер для Windows, который светится цветом обложки.**
 28 стилей — от Liquid Glass и Material 3 до голографического, свой редактор стилей, эквалайзер, ReplayGain, тексты песен и умные подборки. Без аккаунтов, рекламы и облака: только твоя музыка с диска.
 
-[Скачать для Windows](../../releases/latest) · [Что умеет](docs/GUIDE.md) · [English](#english)
+[Скачать для Windows](../../releases/latest) · [Что умеет](docs/GUIDE.md) · [Планы](docs/ROADMAP.md) · [English](#english)
 
 <img src="docs/screenshots/now-aurora.png" width="860" alt="Экран воспроизведения Glow в стиле Aurora">
 
@@ -57,8 +57,19 @@
 - Трей, кнопки на миниатюре в панели задач, медиаклавиши и системная панель с обложкой.
 - Глобальные горячие клавиши, мини-плеер поверх окон.
 - Автообновление: новые версии ставятся в один клик.
+- Настройки по вкладкам и поиск по ним.
 
 Полный список — в [руководстве](docs/GUIDE.md).
+
+## Скоро
+
+- **Синхронизация с телефоном по Wi-Fi** — плейлисты, оценки и история между Glow для ПК и Android без файлов.
+- **Стили, которые правда отличаются** — свои экраны плеера, списки, шрифты и анимации; новые «Винил», «Терминал», «Журнал».
+- **Онлайн** — тексты из LRCLIB, поиск обложек, Last.fm и ListenBrainz, статус в Discord.
+- **Медиатека** — `.m3u`, перетаскивание файлов, поиск дубликатов, «Итоги года».
+- **Английский интерфейс.**
+
+Подробнее — в [планах](docs/ROADMAP.md).
 
 ## Установка
 
@@ -114,6 +125,6 @@ Glow — часть экосистемы: есть версия для Android (
 
 **Glow is a local music player for Windows that glows with the colors of the album art.** 28 themes (Liquid Glass, Material 3 with dynamic color, Holographic, Neo-Noir…), a custom theme editor, gapless playback and crossfade, a 10-band EQ, ReplayGain with built-in loudness analysis, synced lyrics, rule-based smart playlists, automatic library updates, tray and taskbar controls, global hotkeys and one-click updates. No accounts, no ads, no cloud — just your own music.
 
-Built with Tauri 2 and Rust; the UI is plain HTML/CSS/JS. The interface is in Russian for now — an English translation is planned.
+Built with Tauri 2 and Rust; the UI is plain HTML/CSS/JS. The interface is in Russian for now — an English translation is coming in the next update, together with Wi-Fi sync with the Android app, online lyrics (LRCLIB), Last.fm scrobbling, Discord status and more distinctive themes. See the [roadmap](docs/ROADMAP.md).
 
 Download the installer from [Releases](../../releases/latest). To build from source: `npm install && npm run build`.
