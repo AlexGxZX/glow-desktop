@@ -82,7 +82,8 @@ export function bindScrollHead() {
   const c = $('#content'), head = $('#scroll-head');
   const upd = () => {
     const title = $('.view-head .display', c);
-    const show = c.scrollTop > 180 && !!title;
+    // В настройках вместо шапки прилипают вкладки.
+    const show = c.scrollTop > 180 && !!title && !c.querySelector('.set-tabs');
     head.classList.toggle('show', show);
     if (show) {
       $('#sh-title').textContent = title.textContent;

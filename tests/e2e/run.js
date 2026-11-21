@@ -178,6 +178,7 @@ await scenario('обмен .glowsync: экспорт и импорт', async (pg
   if (fav) await pg.click(`#menu .mi[data-m="${fav}"]`);
   await pg.click('#sidebar [data-view="settings"]');
   await sleep(200);
+  await pg.click('[data-settab="system"]');
   await pg.click('[data-cmd="sync-export"]');
   await sleep(300);
   const doc = JSON.parse(await pg.evaluate(() => sessionStorage.getItem('savedSync')));
@@ -224,10 +225,35 @@ await scenario('редактор стиля: светлый фон включа�
   await pg.screenshot({ path: path.join(shots, 'editor-light.png') });
 });
 
+await scenario('настройки: вкладки и поиск', async (pg) => {
+  await pg.click('#sidebar [data-view="settings"]');
+  await sleep(200);
+  const visible = () => pg.$$eval('.set-group:not([hidden]) > .heading', (els) => els.map((e) => e.textContent.trim()));
+  check((await visible()).includes('Стиль') && !(await visible()).includes('Горячие клавиши'), 'вкладка «Вид» показывает не то');
+  await pg.click('[data-settab="player"]');
+  check((await visible()).join() === 'Экран воспроизведения,Звук и воспроизведение' || (await visible()).includes('Звук и воспроизведение'), `вкладка «Звук и плеер»: ${await visible()}`);
+  await pg.click('[data-toggle="gapless"]');
+  await sleep(200);
+  check(await pg.$eval('[data-settab="player"]', (b) => b.classList.contains('on')), 'после переключения настройки вкладка сбросилась');
+  await pg.fill('#set-q', 'кроссфейд');
+  await sleep(100);
+  const rows = await pg.$$eval('.set-row:not([hidden])', (r) => r.filter((x) => x.closest('.set-group:not([hidden])')).length);
+  check(rows === 1, `поиск «кроссфейд» нашёл строк: ${rows}`);
+  await pg.fill('#set-q', 'трей');
+  await sleep(100);
+  check((await visible()).includes('Трей и панель задач'), 'поиск не нашёл трей в другой вкладке');
+  await pg.fill('#set-q', '');
+  await pg.click('[data-settab="system"]');
+  await pg.evaluate(() => { document.querySelector('#content').scrollTop = 400; });
+  await sleep(200);
+  await pg.screenshot({ path: path.join(shots, 'settings-tabs.png') });
+});
+
 await scenario('обновление: кнопка в настройках показывает новую версию', async (pg) => {
   await pg.evaluate(() => sessionStorage.setItem('fakeUpdate', '1'));
   await pg.click('#sidebar [data-view="settings"]');
   await sleep(200);
+  await pg.click('[data-settab="about"]');
   await pg.click('[data-cmd="update-check"]');
   await sleep(400);
   check((await pg.textContent('.modal')).includes('9.9.9'), 'окно обновления не появилось');

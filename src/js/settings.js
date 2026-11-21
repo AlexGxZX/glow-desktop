@@ -65,10 +65,49 @@ export const sel = (key, opts) => `<select class="select" data-set="${key}">${Ob
 export const row = (label, hint, control) => `<div class="set-row"><div class="lbl"><div>${label}</div>${hint ? `<div class="caption">${hint}</div>` : ''}</div>${control}</div>`;
 export const range = (key, min, max, step, val, label) => `<input type="range" data-range="${key}" min="${min}" max="${max}" step="${step}" value="${val}" style="width:220px;accent-color:var(--accent)"><span class="time" data-range-v="${key}" style="width:64px;text-align:right">${label}</span>`;
 
+// Вкладки настроек: какая группа где. Группы без записи попадают во «Вид».
+const SET_TABS = [
+  ['look', 'Вид', 'palette', ['Мои стили', 'Стиль', 'Material You', 'Цвет', 'Стекло', 'Свечение и анимации', 'Иконка приложения']],
+  ['player', 'Звук и плеер', 'eq', ['Звук и воспроизведение', 'Экран воспроизведения']],
+  ['library', 'Медиатека', 'folder', ['Медиатека', 'Боковое меню']],
+  ['system', 'Система', 'settings', ['Трей и панель задач', 'Горячие клавиши', 'Обмен с Android', 'Данные и резервные копии']],
+  ['about', 'О программе', 'info', ['О программе']],
+];
+const tabOf = (heading) => (SET_TABS.find((t) => t[3].includes(heading)) || SET_TABS[0])[0];
+
+/** Показать группы активной вкладки или, если идёт поиск, все строки, где он нашёлся. */
+function applySettingsFilter(c) {
+  const q = (S.setQuery || '').trim().toLowerCase();
+  for (const g of c.querySelectorAll('.set-group')) {
+    if (!q) {
+      g.hidden = g.dataset.tab !== S.setTab;
+      for (const r of g.querySelectorAll('.set-row, .styles-grid > *, .keys > *')) r.hidden = false;
+      continue;
+    }
+    const inHead = g.querySelector('.heading').textContent.toLowerCase().includes(q);
+    let any = inHead;
+    for (const r of g.querySelectorAll('.set-row')) {
+      const hit = inHead || r.textContent.toLowerCase().includes(q);
+      r.hidden = !hit;
+      any ||= hit;
+    }
+    g.hidden = !any;
+  }
+  for (const b of c.querySelectorAll('[data-settab]')) b.classList.toggle('on', !q && b.dataset.settab === S.setTab);
+  const empty = c.querySelector('.set-empty');
+  if (empty) empty.hidden = !q || !!c.querySelector('.set-group:not([hidden])');
+}
+
 export function renderSettings(c) {
+  if (!S.setTab) S.setTab = 'look';
   const folders = settings.folders.map((f, i) => `<div class="folder-row">${I.folder}<div class="grow">${esc(f)}</div><button class="icon-btn" data-cmd="rm-folder" data-i="${i}" title="Убрать">${I.close}</button></div>`).join('');
   const excl = settings.excluded.map((f, i) => `<div class="folder-row">${I.folder}<div class="grow">${esc(f)}</div><button class="icon-btn" data-cmd="rm-excl" data-i="${i}" title="Убрать">${I.close}</button></div>`).join('');
   c.innerHTML = `<div class="settings">${viewHead({ title: 'Настройки', noCover: true, actions: false })}
+    <div class="set-tabs">
+      ${SET_TABS.map(([id, name, icon]) => `<button class="set-tab" data-settab="${id}">${I[icon] || ''}<span>${name}</span></button>`).join('')}
+      <label class="set-search">${I.search}<input id="set-q" placeholder="Найти настройку" value="${esc(S.setQuery || '')}" spellcheck="false"></label>
+    </div>
+    <div class="set-empty muted" hidden>Ничего не нашлось</div>
     <div class="set-group"><div class="heading">Медиатека</div><div class="set-card">
       ${row('Папки с музыкой', `${tracksWord(S.tracks.length)} в медиатеке`, `<button class="btn" data-cmd="add-folder">${I.plus}Добавить</button><button class="btn" data-cmd="rescan">${I.refresh}Пересканировать</button>`)}
       ${folders || '<div class="folder-row muted">Пока нет ни одной папки</div>'}
@@ -183,6 +222,28 @@ export function renderSettings(c) {
       ${row('Проверять обновления при запуске', 'Не чаще раза в сутки. Glow спросит, прежде чем что-то ставить', tog('autoUpdate', settings.autoUpdate))}
     </div></div>
   </div>`;
+  // Раскладываем группы по вкладкам и в порядке, заданном в SET_TABS.
+  const order = SET_TABS.flatMap((t) => t[3]);
+  const groups = [...c.querySelectorAll('.set-group')];
+  for (const g of groups) g.dataset.tab = tabOf(g.querySelector('.heading').textContent.trim());
+  const rank = (g) => { const i = order.indexOf(g.querySelector('.heading').textContent.trim()); return i < 0 ? 999 : i; };
+  const box = c.querySelector('.settings');
+  groups.sort((a, b) => rank(a) - rank(b)).forEach((g) => box.appendChild(g));
+  applySettingsFilter(c);
+  const tabs = c.querySelector('.set-tabs');
+  tabs.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-settab]');
+    if (!b) return;
+    S.setTab = b.dataset.settab;
+    S.setQuery = '';
+    c.querySelector('#set-q').value = '';
+    applySettingsFilter(c);
+    const top = tabs.offsetTop - 12;
+    if (c.scrollTop > top) c.scrollTop = top;
+  });
+  const q = c.querySelector('#set-q');
+  q.addEventListener('input', () => { S.setQuery = q.value; applySettingsFilter(c); });
+  q.addEventListener('keydown', (e) => { if (e.key === 'Escape') { q.value = ''; S.setQuery = ''; applySettingsFilter(c); q.blur(); } });
 }
 
 export function userStyleMenu(id, x, y) {

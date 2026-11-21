@@ -1138,3 +1138,28 @@ body.md3.nav-compact .nav.active { font-weight: 600; }
 .upd-notes { max-height: 34vh; overflow: auto; padding: 12px 14px; border-radius: 12px; background: var(--surface-2, rgba(255,255,255,.04)); line-height: 1.5; margin-bottom: 10px; }
 .upd-bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; margin: 6px 0 4px; }
 .upd-bar > div { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+
+/* ===== Вкладки настроек ===== */
+.set-tabs {
+  position: sticky; top: 0; z-index: 4; display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+  margin: 18px -12px 0; padding: 10px 12px; border-radius: calc(var(--radius) + 6px);
+  background: var(--strong); border: 1px solid var(--line);
+  backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4);
+}
+.set-tab {
+  display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 12px; border-radius: 18px; white-space: nowrap;
+  color: var(--muted); font: inherit; font-weight: 500; background: transparent; border: 0; cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.set-tab svg { width: 18px; height: 18px; }
+.set-tab:hover { color: var(--text); background: var(--surface); }
+.set-tab.on { color: var(--on-btn, #000); background: var(--btn, var(--accent)); }
+body.square .set-tabs, body.square .set-tab { border-radius: 0; }
+.set-search {
+  margin-left: auto; display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; flex: 0 1 190px; min-width: 130px;
+  border-radius: 18px; background: var(--surface); border: 1px solid var(--line); color: var(--muted);
+}
+.set-search svg { width: 16px; height: 16px; flex: none; }
+.set-search input { flex: 1; min-width: 0; background: none; border: 0; outline: none; color: var(--text); font: inherit; }
+.set-empty { margin-top: 40px; text-align: center; }
+.set-group[hidden], .set-row[hidden], .set-empty[hidden] { display: none; }
