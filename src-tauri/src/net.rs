@@ -142,7 +142,13 @@ pub async fn online_lyrics(
 
 fn pick_lyrics(v: &Value) -> Option<(String, bool)> {
     if v.get("instrumental").and_then(Value::as_bool) == Some(true) {
-        return Some(("[00:00.00]♪ Инструментал".into(), true));
+        return Some((
+            format!(
+                "[00:00.00]♪ {}",
+                crate::desktop::l("Инструментал", "Instrumental")
+            ),
+            true,
+        ));
     }
     if let Some(s) = v
         .get("syncedLyrics")
@@ -738,7 +744,7 @@ pub fn discord_set(track: Option<DiscordTrack>) {
             "large_image": t.cover_url.clone().unwrap_or_else(|| "glow".into()),
             "large_text": clip(if t.album.is_empty() { "Glow" } else { &t.album }, 120),
             "small_image": if t.playing { "play" } else { "pause" },
-            "small_text": if t.playing { "Играет в Glow" } else { "Пауза" },
+            "small_text": if t.playing { crate::desktop::l("Играет в Glow", "Playing in Glow") } else { crate::desktop::l("Пауза", "Paused") },
         },
     });
     if t.playing && t.duration > 0.0 {
@@ -868,4 +874,26 @@ pub fn open_url(url: String) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
     }
     Ok(())
+}
+
+/// Описание релиза с GitHub — то, что написано на странице релиза сейчас
+/// (latest.json хранит текст на момент сборки, а описание часто правят уже после).
+pub async fn release_notes(version: String) -> Option<String> {
+    blocking(move || {
+        let url =
+            format!("https://api.github.com/repos/AlexGxZX/glow-desktop/releases/tags/v{version}");
+        let r = agent()
+            .get(&url)
+            .set("Accept", "application/vnd.github+json")
+            .call()
+            .ok()?;
+        let v: Value = r.into_json().ok()?;
+        v.get("body")
+            .and_then(Value::as_str)
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+    })
+    .await
+    .ok()
+    .flatten()
 }

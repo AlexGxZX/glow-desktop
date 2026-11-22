@@ -6,7 +6,7 @@ import { renderSettings, row } from './settings.js';
 import { evalSmart, ruleText } from './smart.js';
 import { S, SORTS, favs, meta, settings, sortTracks, stub, track } from './state.js';
 import { albumCard, artistCard, emptyHtml, folderArt, folderCard, folderName, listMeta, mountList, viewHead } from './ui.js';
-import { $, $$, UNKNOWN_ARTIST, esc, fmtLong, norm, plural, tracksWord } from './util.js';
+import { $, $$, LOCALE, UNKNOWN_ARTIST, esc, fmtLong, norm, plural, tracksWord } from './util.js';
 import { renderDupes, renderWrapped } from './collection.js';
 
 // ================= Навигация =================
@@ -244,10 +244,10 @@ export const VIEWS = {
 
 export function whenText(ts) {
   const d = new Date(ts * 1000), now = new Date();
-  const time = d.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
+  const time = d.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
   if (d.toDateString() === now.toDateString()) return `Сегодня, ${time}`;
   const y = new Date(now); y.setDate(now.getDate() - 1);
   if (d.toDateString() === y.toDateString()) return `Вчера, ${time}`;
-  return d.toLocaleDateString('ru', { day: 'numeric', month: 'short' }) + `, ${time}`;
+  return d.toLocaleDateString(LOCALE, { day: 'numeric', month: 'short' }) + `, ${time}`;
 }
 

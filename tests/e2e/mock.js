@@ -61,7 +61,7 @@
         if (cmd === 'pick_file') return 'D:\\x.glowsync';
         if (cmd === 'read_text') return args.path.endsWith('.lrc') ? '[00:00.00]Текст из папки\n[00:03.00]вторая строка' : sessionStorage.getItem('savedSync');
         if (cmd === 'write_folder_image') return args.folder + '\\folder.jpg';
-        if (cmd === 'check_update') return sessionStorage.getItem('fakeUpdate') ? { version: '9.9.9', current: '1.12.0', notes: 'Тестовое обновление\n— пункт', date: '' } : null;
+        if (cmd === 'check_update') return sessionStorage.getItem('fakeUpdate') ? { version: '9.9.9', current: '1.13.0', notes: 'Тестовое обновление\n— пункт', date: '' } : null;
         if (cmd === 'install_update') { window.__glowEmit('update-progress', 0.5); return null; }
         if (cmd === 'read_lyrics') return byPath.get(args.path)?.has_lyrics ? lrc : null;
         return null;

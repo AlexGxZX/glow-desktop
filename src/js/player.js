@@ -1,12 +1,13 @@
 // Glow для ПК — player.js (часть интерфейса, вынесена из main.js).
 
+import { t as tl } from './i18n.js';
 import { I } from './icons.js';
 import { parseLrc, lineAt } from './lyrics.js';
 import { findLrcInFolder, measureTrack } from './features.js';
 import { fetchOnlineLyrics, onlineSeeked, onlineStateChanged, onlineTrackChanged, scrobbleTick } from './online.js';
 import { updateMediaSession } from './main.js';
 import { LS, S, curTrack, engine, favs, meta, saveMeta, saveSettings, settings, track, vis, visuals } from './state.js';
-import { coverHtml, isStudio, refreshTheme, starsHtml, techText } from './ui.js';
+import { coverHtml, isStudio, refreshTheme, sceneTrack, starsHtml, techText } from './ui.js';
 import { $, UNKNOWN_ARTIST, clamp, esc, fmt, invoke, shuffleArr, toast, tracksWord } from './util.js';
 
 // ================= Воспроизведение =================
@@ -92,6 +93,7 @@ export function onTrackChanged() {
   const ct = curTrack();
   invoke('set_tray_tip', { text: ct ? `${ct.title} — ${ct.artist || UNKNOWN_ARTIST}` : 'Glow' }).catch(() => {});
   onlineTrackChanged(ct);
+  sceneTrack();
   if (settings.rgAuto && ct && !ct.missing && !ct.rg_track && !ct.rg_album && meta.rgCalc[ct.path] === undefined) setTimeout(() => measureTrack(ct), 2500);
   maybeExtend();
   prepareNext();
@@ -279,7 +281,7 @@ engine.addEventListener('error', (e) => {
 
 export function updateNowPlaying() {
   const t = curTrack();
-  const title = t ? t.title : 'Ничего не играет';
+  const title = t ? t.title : tl('Ничего не играет');
   const artist = t ? t.artist || UNKNOWN_ARTIST : '';
   $('#pb-title').textContent = title;
   $('#pb-artist').textContent = artist;

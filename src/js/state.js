@@ -1,5 +1,6 @@
 // Glow для ПК — state.js (часть интерфейса, вынесена из main.js).
 
+import { t as tl } from './i18n.js';
 import { STYLES } from './theme.js';
 import { Engine } from './audio.js';
 import { Visuals } from './visuals.js';
@@ -23,7 +24,7 @@ export const DEFAULTS = {
   style: 'aura', accentMode: 'cover', customAccent: '#7c5cff', glow: 0.75, animations: true,
   contrast: 'standard', md3Dynamic: false, md3Seed: '#6750a4', appIcon: 'glow',
   md3Variant: 'tonal', md3Mode: 'dark', glassBlur: 30, glassAlpha: 0.14, glassTint: false, glassLens: false,
-  crossfade: 0, lyricsFolder: '', rgAuto: true, closeToTray: false, globalHotkeys: true, mediaKeys: false, watchFolders: true, autoUpdate: true,
+  crossfade: 0, lyricsFolder: '', rgAuto: true, closeToTray: false, globalHotkeys: true, mediaKeys: false, watchFolders: true, autoUpdate: true, lang: 'auto', scene: 'auto',
   offline: false, onlineLyrics: true, lfmSession: '', lfmUser: '', lbToken: '', lbUser: '', discord: false, discordCover: true,
   backdrop: 'glow', coverMotion: 'beat', particles: true, beatDelay: 0, nowSide: 'lyrics',
   autoContinue: true, gapless: true, replayGain: 'track', rgPreamp: 0, resume: true,
@@ -96,7 +97,7 @@ export const track = (i) => {
   return S.byPath.get(p) || stub(p);
 };
 export const curTrack = () => track(S.qi);
-export const stub = (p) => ({ path: p, title: baseName(p), artist: 'Файл не найден', album: '', duration: 0, missing: true });
+export const stub = (p) => ({ path: p, title: baseName(p), artist: tl('Файл не найден'), album: '', duration: 0, missing: true });
 
 // ================= Медиатека =================
 

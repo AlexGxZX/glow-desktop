@@ -1,5 +1,6 @@
 // Glow для ПК — медиатека: плейлисты .m3u, перетаскивание файлов в окно, дубликаты, «Итоги года».
 
+import { t as tl } from './i18n.js';
 import { I } from './icons.js';
 import { confirmModal, openModal } from './dialogs.js';
 import { applyRelinks } from './features.js';
@@ -8,7 +9,7 @@ import { addToQueue, playTracks } from './player.js';
 import { renderPlaylists } from './sidebar.js';
 import { S, meta, saveMeta, saveSettings, settings } from './state.js';
 import { coverHtml, emptyHtml, viewHead } from './ui.js';
-import { $, TAURI, UNKNOWN_ARTIST, esc, fmt, invoke, toast, tracksWord } from './util.js';
+import { $, LOCALE, TAURI, UNKNOWN_ARTIST, esc, fmt, invoke, pluralWord, toast, tracksWord } from './util.js';
 import { buildM3u, computeWrapped, findDuplicates, historyYears, matchM3u, parseM3u } from './pure.js';
 import { go, render } from './views.js';
 
@@ -23,7 +24,7 @@ export async function exportPlaylistM3u(id) {
   if (!pl) return;
   const tracks = pl.tracks.map((p) => S.byPath.get(p)).filter(Boolean);
   try {
-    const ok = await invoke('save_file', { name: `${pl.name.replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'Плейлист'}.m3u8`, content: buildM3u(tracks), ext: 'm3u8', label: 'Плейлист M3U' });
+    const ok = await invoke('save_file', { name: `${pl.name.replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'Плейлист'}.m3u8`, content: buildM3u(tracks), ext: 'm3u8', label: tl('Плейлист M3U') });
     if (ok) toast(`Плейлист сохранён: ${tracksWord(tracks.length)}`);
   } catch (e) { toast(`Не удалось сохранить: ${e}`); }
 }
@@ -31,7 +32,7 @@ export async function exportPlaylistM3u(id) {
 /** Импорт одного или нескольких .m3u/.m3u8: новые плейлисты из найденных в медиатеке треков. */
 export async function importM3u(paths) {
   if (!paths) {
-    const p = await invoke('pick_file', { exts: ['m3u', 'm3u8'], label: 'Плейлист M3U' }).catch(() => null);
+    const p = await invoke('pick_file', { exts: ['m3u', 'm3u8'], label: tl('Плейлист M3U') }).catch(() => null);
     if (!p) return;
     paths = [p];
   }
@@ -159,8 +160,8 @@ export function renderDupes(c) {
 
 // ================= Итоги года =================
 
-const MONTHS = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
-const plural = (n, one, few, many) => { const a = n % 10, b = n % 100; return a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many; };
+const MONTHS = Array.from({ length: 12 }, (_, i) => new Date(2000, i, 1).toLocaleString(LOCALE, { month: 'short' }).replace('.', ''));
+const plural = pluralWord;
 
 export function renderWrapped(c, yearParam) {
   const years = historyYears(meta.history);
@@ -179,7 +180,7 @@ export function renderWrapped(c, yearParam) {
     extra: years.length > 1 ? `<div class="chips">${years.map((y) => `<button class="chip${y === year ? ' on' : ''}" data-go="wrapped" data-key="${y}">${y}</button>`).join('')}</div>` : '' })
     + `<div class="wr">
       <div class="wr-hero">
-        <div class="wr-big">${w.minutes.toLocaleString('ru-RU')}</div>
+        <div class="wr-big">${w.minutes.toLocaleString(LOCALE)}</div>
         <div class="wr-label">${plural(w.minutes, 'минута', 'минуты', 'минут')} музыки${hours >= 2 ? ` — это ${hours} ${plural(hours, 'час', 'часа', 'часов')}` : ''}</div>
       </div>
       <div class="stat-cards">
@@ -203,7 +204,7 @@ export function renderWrapped(c, yearParam) {
           <div class="caption" style="margin-top:8px">Чаще всего слушаешь около ${w.peakHour}:00</div></div>
       </div>
       <div class="wr-facts">
-        ${firstT ? `<div class="wr-fact"><div class="overline">Первый трек года</div><div class="r-title">${esc(firstT.title)}</div><div class="r-sub">${esc(firstT.artist || UNKNOWN_ARTIST)} · ${new Date(w.first.t * 1000).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}</div></div>` : ''}
+        ${firstT ? `<div class="wr-fact"><div class="overline">Первый трек года</div><div class="r-title">${esc(firstT.title)}</div><div class="r-sub">${esc(firstT.artist || UNKNOWN_ARTIST)} · ${new Date(w.first.t * 1000).toLocaleDateString(LOCALE, { day: 'numeric', month: 'long' })}</div></div>` : ''}
         ${w.discovery ? `<div class="wr-fact"><div class="overline">Открытие года</div><div class="r-title">${esc(w.discovery[0])}</div><div class="r-sub">${w.discovery[1]} ${plural(w.discovery[1], 'прослушивание', 'прослушивания', 'прослушиваний')}</div></div>` : ''}
       </div>
       <div class="actions" style="margin-top:22px"><button class="btn primary" id="wr-play">${I.play}Слушать треки года</button></div>

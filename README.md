@@ -17,6 +17,14 @@
 
 <table>
 <tr>
+<td><img src="docs/screenshots/scene-vinyl.png" alt="Сцена «Светящийся винил»"></td>
+<td><img src="docs/screenshots/scene-planet.png" alt="Сцена «Светящаяся планета»"></td>
+</tr>
+<tr>
+<td align="center">Сцена «Светящийся винил» (Dark Premium)</td>
+<td align="center">Сцена «Светящаяся планета» (Deep Space)</td>
+</tr>
+<tr>
 <td><img src="docs/screenshots/now-holographic.png" alt="Голографический стиль"></td>
 <td><img src="docs/screenshots/albums-liquid-glass.png" alt="Liquid Glass"></td>
 </tr>
@@ -39,6 +47,8 @@
 **Вид**
 - 28 стилей: Aurora, Neo-Noir, Deep Space, Nordic, Fluent, Paper, Studio, Holographic, Liquid Glass, Material Glass и 8 тем Material 3 с динамическим цветом от обложки.
 - Material 3 по-настоящему: волнистый прогресс, кнопка Play меняет форму, 5 вариантов схемы, светлые темы и режим «как в Windows».
+- Сцены экрана плеера вместо обложки: светящийся винил, кассета, светодиодная матрица, жидкий свет, светящаяся планета.
+- Живые детали у каждого стиля: лучи у Aura, снег у Nordic, угли у Copper, светлячки у Soft Dark, иней у Midnight Blue, затмение у Obsidian.
 - Редактор своего стиля: слои, пресеты, история версий, экспорт в `.glowtheme`.
 - Экран воспроизведения с частицами и вспышками в такт музыке, синхронные тексты.
 
@@ -62,6 +72,8 @@
 - Режим «Без интернета» — Glow не выходит в сеть совсем.
 - Редактор тегов и обложек, которые видят и Проводник, и другие плееры.
 
+**Язык** — русский и английский интерфейс.
+
 **Windows**
 - Трей, кнопки на миниатюре в панели задач, медиаклавиши и системная панель с обложкой.
 - Глобальные горячие клавиши, мини-плеер поверх окон.
@@ -72,8 +84,7 @@
 
 ## Скоро
 
-- **1.13 — у каждого стиля своё лицо:** сцены экрана плеера (светящийся винил, кассета, светодиодная матрица, жидкий свет, планета), свои фоны и частицы, мотивы для тем Material You, новая сетка стилей.
-- **2.0 — Glow как экосистема:** ПК и телефон — одна медиатека с передачей музыки по Wi-Fi, звуковое ядро на Rust со всеми форматами, английский интерфейс.
+- **2.0 — Glow как экосистема:** ПК и телефон — одна медиатека с передачей музыки по Wi-Fi, звуковое ядро на Rust со всеми форматами и настоящим «без пауз».
 
 Подробнее — в [планах](docs/ROADMAP.md).
 
@@ -131,6 +142,8 @@ Glow — часть экосистемы: есть версия для Android (
 
 **Glow is a local music player for Windows that glows with the colors of the album art.** 28 themes (Liquid Glass, Material 3 with dynamic color, Holographic, Neo-Noir…), a custom theme editor, gapless playback and crossfade, a 10-band EQ, ReplayGain with built-in loudness analysis, synced lyrics, rule-based smart playlists, automatic library updates, tray and taskbar controls, global hotkeys and one-click updates. No accounts, no ads, no cloud — just your own music.
 
-Built with Tauri 2 and Rust; the UI is plain HTML/CSS/JS. The interface is in Russian for now — an English translation is coming in 2.0, together with one shared library between the PC and Android apps over Wi-Fi. Online extras are already in: synced lyrics from LRCLIB, cover search, Last.fm and ListenBrainz scrobbling, Discord status. See the [roadmap](docs/ROADMAP.md).
+Player-screen scenes replace the cover with a glowing vinyl record, a cassette, an LED matrix, liquid light or a glowing planet. The interface is available in English and Russian (Settings → Look → Language). Online extras: synced lyrics from LRCLIB, cover search, Last.fm and ListenBrainz scrobbling, Discord status.
+
+Built with Tauri 2 and Rust; the UI is plain HTML/CSS/JS. Coming in 2.0: one shared library between the PC and Android apps over Wi-Fi and a Rust audio engine. See the [roadmap](docs/ROADMAP.md).
 
 Download the installer from [Releases](../../releases/latest). To build from source: `npm install && npm run build`.

@@ -3,11 +3,12 @@
 import { I } from './icons.js';
 import { STYLES, ACCENTS, MD3_SEEDS, md3Scheme } from './theme.js';
 import { BACKDROPS, MOTIONS } from './visuals.js';
+import { SCENES } from './scenes.js';
 import { loadCustom, getCustom, exportData, addImported, duplicateCustom, deleteCustom } from './editor.js';
 import { confirmModal, showMenu } from './dialogs.js';
 import { applyDesktop, scan, watchFolders } from './library.js';
 import { prepareNext, prev, renderNowRight } from './player.js';
-import { S, curTrack, editor, meta, saveSettings, settings, track } from './state.js';
+import { S, curTrack, editor, flushNow, meta, saveSettings, settings, track } from './state.js';
 import { applyAudio, applyVisualSettings, refreshTheme, viewHead } from './ui.js';
 import { $, APP_VERSION, esc, invoke, toast, tracksWord } from './util.js';
 import { pendingScrobbles, scheduleFlush, updateDiscord } from './online.js';
@@ -18,8 +19,11 @@ import { render } from './views.js';
 export function md3Card(id) {
   const s = STYLES[id];
   const sc = md3Scheme(s.custom ? settings.md3Seed : s.md3.primary, 'standard', s.custom ? null : s.md3);
-  return `<button class="style-card${settings.style === id ? ' on' : ''}" data-style="${id}">
+  const sig = s.motif ? ` sig-${s.motif}` : '';
+  const scene = s.scene ? ` scene-${s.scene}` : '';
+  return `<button class="style-card md3-card${settings.style === id ? ' on' : ''}${sig}${scene}" data-style="${id}" style="--sa:${sc.primary};--sb:${sc.tertiary || sc.primary}">
     <div class="style-prev" style="background:${sc.surface}">
+      ${s.scene ? `<span class="sc-tag">${SCENES[s.scene]}</span>` : ''}
       <div style="position:absolute;left:14px;top:16px;width:64px;height:18px;border-radius:9px;background:${sc.secondaryContainer}"></div>
       <div style="position:absolute;left:14px;top:42px;width:44px;height:6px;border-radius:3px;background:${sc.onSurfaceVariant};opacity:.6"></div>
       <div style="position:absolute;left:14px;top:56px;width:52px;height:6px;border-radius:3px;background:${sc.onSurfaceVariant};opacity:.6"></div>
@@ -30,13 +34,33 @@ export function md3Card(id) {
     <div class="sc-name"><div class="body-strong">${s.name}</div><div class="caption">${s.sub}</div></div></button>`;
 }
 
+// Группы в сетке стилей. Стиль, которого нет в списке, попадает в «Свечение».
+const STYLE_GROUPS = [
+  ['Свечение', ['aura', 'dynamic', 'premium', 'aurora', 'noir', 'space', 'holo', 'ambient']],
+  ['Стекло', ['glass', 'mglass', 'fluent']],
+  ['Спокойные', ['softdark', 'studio', 'mono', 'swiss']],
+  ['Светлые', ['light', 'soft', 'nordic', 'paper']],
+];
+
+function styleGroups() {
+  const ids = Object.keys(STYLES).filter((k) => !STYLES[k].md3 && !STYLES[k].user && k !== '__edit');
+  const listed = new Set(STYLE_GROUPS.flatMap((g) => g[1]));
+  return STYLE_GROUPS.map(([name, list], i) => {
+    const items = list.filter((k) => STYLES[k]).concat(i === 0 ? ids.filter((k) => !listed.has(k)) : []);
+    return `<div class="overline sg-title">${name}</div><div class="styles-grid">${items.map(styleCard).join('')}</div>`;
+  }).join('');
+}
+
 export function styleCard(id) {
   const s = STYLES[id];
   if (s.md3) return md3Card(id);
   const acc = s.accent;
   const r = s.cover ? Math.round(s.cover / 2.4) : 0;
-  return `<button class="style-card${settings.style === id ? ' on' : ''}" data-style="${id}">
+  const sig = s.motif ? ` sig-${s.motif}` : '';
+  const scene = s.scene ? ` scene-${s.scene}` : '';
+  return `<button class="style-card${settings.style === id ? ' on' : ''}${sig}${scene}" data-style="${id}" style="--sa:${acc};--sb:${s.second || acc}">
     <div class="style-prev" style="background:${s.preview || s.bg}">
+      ${s.scene ? `<span class="sc-tag">${SCENES[s.scene]}</span>` : ''}
       ${s.glow && !s.preview && !s.soften ? `<div style="position:absolute;left:-10px;top:-10px;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle, ${acc}99, transparent 70%)"></div>` : ''}
       ${s.glass ? `<div style="position:absolute;inset:0;background:radial-gradient(60% 80% at 20% 30%, ${acc}88, transparent), radial-gradient(50% 70% at 90% 80%, #ff5cc866, transparent)"></div>` : ''}
       <div class="sp-cover" style="background:${s.dynamic ? 'linear-gradient(135deg,#ff7a59,#ffb547)' : acc};border-radius:${r}px;${s.glass ? 'border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.2)' : ''}${s.neon ? `background:transparent;border:1.5px solid ${acc};box-shadow:0 0 14px ${acc}, inset 0 0 10px ${acc}66` : ''}${s.fx === 'space' ? `box-shadow:0 0 0 10px ${acc}22, 0 0 30px ${acc}` : ''}${s.light && s.soften ? 'box-shadow:0 10px 20px -8px rgba(70,55,35,.35)' : ''}"></div>
@@ -68,7 +92,7 @@ export const range = (key, min, max, step, val, label) => `<input type="range" d
 
 // Вкладки настроек: какая группа где. Группы без записи попадают во «Вид».
 const SET_TABS = [
-  ['look', 'Вид', 'palette', ['Мои стили', 'Стиль', 'Material You', 'Цвет', 'Стекло', 'Свечение и анимации', 'Иконка приложения']],
+  ['look', 'Вид', 'palette', ['Язык', 'Мои стили', 'Стиль', 'Material You', 'Цвет', 'Стекло', 'Свечение и анимации', 'Иконка приложения']],
   ['player', 'Звук и плеер', 'eq', ['Звук и воспроизведение', 'Экран воспроизведения']],
   ['library', 'Медиатека', 'folder', ['Медиатека', 'Боковое меню']],
   ['online', 'Онлайн', 'globe', ['Интернет', 'Скробблинг', 'Discord']],
@@ -129,7 +153,7 @@ export function renderSettings(c) {
       ${loadCustom().length ? `<div class="styles-grid">${loadCustom().map((c) => `<div class="ucard">${styleCard(c.id)}<button class="icon-btn ucard-more" data-umore="${esc(c.id)}" title="Действия">${I.more}</button></div>`).join('')}</div>` : ''}
     </div>
 
-    <div class="set-group"><div class="heading">Стиль</div><div class="styles-grid">${Object.keys(STYLES).filter((k) => !STYLES[k].md3).map(styleCard).join('')}</div></div>
+    <div class="set-group"><div class="heading">Стиль</div>${styleGroups()}</div>
     <div class="set-group"><div class="heading">Material You</div>
       <div class="caption" style="margin:-4px 0 12px">Тёмные темы на системе Material 3: поверхности и выделения строятся по тональным уровням, поэтому текст всегда читается.</div>
       <div class="styles-grid">${Object.keys(STYLES).filter((k) => STYLES[k].md3).map(styleCard).join('')}</div></div>
@@ -164,10 +188,12 @@ export function renderSettings(c) {
     <div class="set-group"><div class="heading">Свечение и анимации</div><div class="set-card">
       ${row('Сила свечения', 'Swiss и Liquid Glass не светятся', range('glow', 0, 1, 0.05, settings.glow, Math.round(settings.glow * 100) + '%'))}
       ${row('Анимации', 'Плавные переходы, частицы, движение обложки', tog('animations', settings.animations))}
+      ${row('Живые детали стиля', 'Лучи у Aura, снег у Nordic, угли у Copper, светлячки у Soft Dark и другие — лёгкий слой поверх фона окна', tog('styleMotifs', settings.styleMotifs !== false))}
     </div></div>
 
     <div class="set-group"><div class="heading">Экран воспроизведения</div><div class="set-card">
       ${STYLES[settings.style] && STYLES[settings.style].user ? '<div class="set-row caption">У своего стиля экран плеера настраивается в редакторе стиля (слой «Экран плеера»). Ниже — настройки для остальных стилей.</div>' : ''}
+      ${row('Сцена', 'Что в центре вместо обложки. «Как в стиле» — у Dark Premium винил, у Studio кассета, у Deep Space планета…', sel('scene', { auto: 'Как в стиле', ...SCENES }))}
       ${row('Фон', '', sel('backdrop', BACKDROPS))}
       ${row('Движение обложки', '«Бит» — обложка и свечение пульсируют на ударах баса', sel('coverMotion', MOTIONS))}
       ${row('Частицы в бит', 'Вылетают из-за обложки на ударах; у каждого стиля свои', tog('particles', settings.particles))}
@@ -189,6 +215,10 @@ export function renderSettings(c) {
     <div class="set-group"><div class="heading">Боковое меню</div><div class="set-card">
       ${row('Вид меню', 'Кнопка слева в заголовке окна или Ctrl+B прячет и возвращает меню', `<div class="chips">${[['full', 'Полное'], ['compact', 'Только иконки'], ['hidden', 'Скрыто']].map(([k, n]) => `<button class="chip${settings.sidebar.mode === k ? ' on' : ''}" data-navmode="${k}">${n}</button>`).join('')}</div>`)}
       ${row('Пункты и группы', 'Порядок, скрытые пункты, свои группы, закреплённые альбомы, исполнители и папки', `<button class="btn" data-cmd="nav-edit">${I.edit}Настроить</button>`)}
+    </div></div>
+
+    <div class="set-group"><div class="heading">Язык</div><div class="set-card">
+      ${row('Язык интерфейса', 'Interface language · окно перезапустится', sel('lang', { auto: 'Как в системе', ru: 'Русский', en: 'English' }))}
     </div></div>
 
     <div class="set-group"><div class="heading">Интернет</div><div class="set-card">
@@ -310,13 +340,14 @@ export async function importStyle() {
 
 export function afterSetting(key, rerender = true) {
   saveSettings();
-  if (['style', 'accentMode', 'customAccent', 'glow', 'animations', 'contrast', 'md3Dynamic', 'md3Seed', 'md3Variant', 'md3Mode', 'glassBlur', 'glassAlpha', 'glassTint', 'glassLens'].includes(key)) refreshTheme();
+  if (['style', 'styleMotifs', 'accentMode', 'customAccent', 'glow', 'animations', 'contrast', 'md3Dynamic', 'md3Seed', 'md3Variant', 'md3Mode', 'glassBlur', 'glassAlpha', 'glassTint', 'glassLens'].includes(key)) refreshTheme();
   if (['replayGain', 'gapless', 'rgPreamp', 'crossfade'].includes(key)) { applyAudio(); prepareNext(); }
+  if (key === 'lang') { flushNow(); (window.__glowFlush ? window.__glowFlush() : Promise.resolve()).then(() => location.reload()); return; }
   if (key === 'watchFolders') { watchFolders(); if (settings.watchFolders) scan(true); }
   if (['discord', 'discordCover', 'offline'].includes(key)) updateDiscord(curTrack());
   if (key === 'offline' && !settings.offline) scheduleFlush(2000);
   if (['closeToTray', 'globalHotkeys', 'mediaKeys'].includes(key)) { applyDesktop().then(() => { if (S.view.name === 'settings') render($('#content').scrollTop); }); return; }
-  if (['backdrop', 'coverMotion', 'particles', 'beatDelay', 'animations'].includes(key)) applyVisualSettings();
+  if (['backdrop', 'coverMotion', 'particles', 'beatDelay', 'animations', 'scene'].includes(key)) applyVisualSettings();
   if (key === 'nowSide' && S.nowOpen) renderNowRight();
   if (key === 'sort') { render(0); return; }
   if (rerender && S.view.name === 'settings') render($('#content').scrollTop);

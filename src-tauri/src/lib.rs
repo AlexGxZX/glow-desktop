@@ -202,7 +202,10 @@ async fn backup_save(app: AppHandle) -> Result<bool, String> {
     let picked = app
         .dialog()
         .file()
-        .add_filter("Резервная копия Glow", &["glowbackup"])
+        .add_filter(
+            desktop::l("Резервная копия Glow", "Glow backup"),
+            &["glowbackup"],
+        )
         .set_file_name(format!("Glow-{}.glowbackup", now_secs()))
         .blocking_save_file();
     let Some(fp) = picked else { return Ok(false) };
@@ -221,7 +224,10 @@ async fn backup_restore(app: AppHandle) -> Result<bool, String> {
     let picked = app
         .dialog()
         .file()
-        .add_filter("Резервная копия Glow", &["glowbackup", "json"])
+        .add_filter(
+            desktop::l("Резервная копия Glow", "Glow backup"),
+            &["glowbackup", "json"],
+        )
         .blocking_pick_file();
     let Some(fp) = picked else { return Ok(false) };
     let path = fp.into_path().map_err(|e| e.to_string())?;
@@ -551,11 +557,18 @@ struct UpdateInfo {
 async fn check_update(app: AppHandle) -> Result<Option<UpdateInfo>, String> {
     use tauri_plugin_updater::UpdaterExt;
     let updater = app.updater().map_err(|e| e.to_string())?;
-    let update = updater.check().await.map_err(|e| e.to_string())?;
-    Ok(update.map(|u| UpdateInfo {
+    let Some(u) = updater.check().await.map_err(|e| e.to_string())? else {
+        return Ok(None);
+    };
+    // Берём описание со страницы релиза: его правят после сборки, а latest.json остаётся старым.
+    let notes = match net::release_notes(u.version.clone()).await {
+        Some(n) => n,
+        None => u.body.clone().unwrap_or_default(),
+    };
+    Ok(Some(UpdateInfo {
         version: u.version.clone(),
         current: u.current_version.clone(),
-        notes: u.body.clone().unwrap_or_default(),
+        notes,
         date: u.date.map(|d| d.to_string()).unwrap_or_default(),
     }))
 }
@@ -768,7 +781,7 @@ async fn pick_folder(app: AppHandle) -> Option<String> {
 async fn pick_lrc(app: AppHandle) -> Option<String> {
     app.dialog()
         .file()
-        .add_filter("Тексты песен", &["lrc", "txt"])
+        .add_filter(desktop::l("Тексты песен", "Lyrics"), &["lrc", "txt"])
         .blocking_pick_file()
         .map(|p| p.to_string())
 }
@@ -783,7 +796,7 @@ async fn save_theme(app: AppHandle, name: String, content: String) -> Result<boo
     let picked = app
         .dialog()
         .file()
-        .add_filter("Стиль Glow", &["glowtheme"])
+        .add_filter(desktop::l("Стиль Glow", "Glow style"), &["glowtheme"])
         .set_file_name(&safe)
         .blocking_save_file();
     let Some(fp) = picked else {
@@ -929,7 +942,7 @@ async fn write_tags(app: AppHandle, path: String, edit: TagEdit) -> Result<Track
 async fn pick_cover(app: AppHandle) -> Option<String> {
     app.dialog()
         .file()
-        .add_filter("Обложка", &["jpg", "jpeg", "png"])
+        .add_filter(desktop::l("Обложка", "Cover"), &["jpg", "jpeg", "png"])
         .blocking_pick_file()
         .map(|p| p.to_string())
 }
@@ -1007,7 +1020,10 @@ fn write_folder_image(src: String, folder: String) -> Result<String, String> {
 async fn pick_image(app: AppHandle) -> Option<String> {
     app.dialog()
         .file()
-        .add_filter("Изображения", &["jpg", "jpeg", "png", "webp", "gif", "bmp"])
+        .add_filter(
+            desktop::l("Изображения", "Images"),
+            &["jpg", "jpeg", "png", "webp", "gif", "bmp"],
+        )
         .blocking_pick_file()
         .map(|p| p.to_string())
 }
@@ -1017,7 +1033,10 @@ async fn pick_image(app: AppHandle) -> Option<String> {
 async fn pick_theme(app: AppHandle) -> Option<String> {
     app.dialog()
         .file()
-        .add_filter("Стиль Glow", &["glowtheme", "json"])
+        .add_filter(
+            desktop::l("Стиль Glow", "Glow style"),
+            &["glowtheme", "json"],
+        )
         .blocking_pick_file()
         .map(|p| p.to_string())
 }
@@ -1251,6 +1270,7 @@ pub fn run() {
             desktop::set_global_hotkeys,
             desktop::set_thumb_playing,
             desktop::watch_folders,
+            desktop::set_ui_lang,
             check_update,
             install_update,
             net::online_lyrics,

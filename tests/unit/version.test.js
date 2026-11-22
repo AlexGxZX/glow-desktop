@@ -24,7 +24,7 @@ test('все модули интерфейса импортируют тольк
   for (const f of files) {
     const src = fs.readFileSync(new URL(f, dir), 'utf8');
     for (const m of src.matchAll(/^import \{([^}]*)\} from '\.\/([\w.]+)';/gm)) {
-      for (const name of m[1].split(',').map((s) => s.trim()).filter(Boolean)) {
+      for (const name of m[1].split(',').map((s) => s.trim().split(/\s+as\s+/)[0]).filter(Boolean)) {
         if (!exportsOf[m[2]]?.has(name)) missing.push(`${f}: ${name} из ${m[2]}`);
       }
     }

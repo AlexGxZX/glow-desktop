@@ -14,6 +14,76 @@ use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut,
 
 /// Закрывать окно в трей, а не выходить.
 pub static CLOSE_TO_TRAY: AtomicBool = AtomicBool::new(false);
+/// Интерфейс на английском (меню трея, подсказки, диалоги).
+pub static UI_EN: AtomicBool = AtomicBool::new(false);
+
+/// Строка на языке интерфейса.
+pub fn l(ru: &'static str, en: &'static str) -> &'static str {
+    if UI_EN.load(Ordering::Relaxed) {
+        en
+    } else {
+        ru
+    }
+}
+
+fn tray_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
+    let show = MenuItem::with_id(
+        app,
+        "show",
+        l("Открыть Glow", "Open Glow"),
+        true,
+        None::<&str>,
+    )?;
+    let prev = MenuItem::with_id(
+        app,
+        "prev",
+        l("Предыдущий трек", "Previous track"),
+        true,
+        None::<&str>,
+    )?;
+    let play = MenuItem::with_id(
+        app,
+        "play",
+        l("Играть / пауза", "Play / pause"),
+        true,
+        None::<&str>,
+    )?;
+    let next = MenuItem::with_id(
+        app,
+        "next",
+        l("Следующий трек", "Next track"),
+        true,
+        None::<&str>,
+    )?;
+    let like = MenuItem::with_id(
+        app,
+        "like",
+        l("В избранное", "Add to favorites"),
+        true,
+        None::<&str>,
+    )?;
+    let quit = MenuItem::with_id(
+        app,
+        "quit",
+        l("Выйти из Glow", "Quit Glow"),
+        true,
+        None::<&str>,
+    )?;
+    let s1 = PredefinedMenuItem::separator(app)?;
+    let s2 = PredefinedMenuItem::separator(app)?;
+    Menu::with_items(app, &[&show, &s1, &prev, &play, &next, &like, &s2, &quit])
+}
+
+/// Язык интерфейса из настроек Glow: перестраиваем меню трея и подсказки кнопок.
+#[tauri::command]
+pub fn set_ui_lang(app: AppHandle, lang: String) {
+    UI_EN.store(lang == "en", Ordering::Relaxed);
+    if let (Some(tray), Ok(menu)) = (app.tray_by_id("glow"), tray_menu(&app)) {
+        let _ = tray.set_menu(Some(menu));
+    }
+    #[cfg(windows)]
+    thumbbar::refresh(&app);
+}
 
 fn emit_media(app: &AppHandle, action: &str) {
     let _ = app.emit("media", action.to_string());
@@ -30,15 +100,7 @@ pub fn show_main(app: &AppHandle) {
 // ---------------- Трей ----------------
 
 pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
-    let show = MenuItem::with_id(app, "show", "Открыть Glow", true, None::<&str>)?;
-    let prev = MenuItem::with_id(app, "prev", "Предыдущий трек", true, None::<&str>)?;
-    let play = MenuItem::with_id(app, "play", "Играть / пауза", true, None::<&str>)?;
-    let next = MenuItem::with_id(app, "next", "Следующий трек", true, None::<&str>)?;
-    let like = MenuItem::with_id(app, "like", "В избранное", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "Выйти из Glow", true, None::<&str>)?;
-    let s1 = PredefinedMenuItem::separator(app)?;
-    let s2 = PredefinedMenuItem::separator(app)?;
-    let menu = Menu::with_items(app, &[&show, &s1, &prev, &play, &next, &like, &s2, &quit])?;
+    let menu = tray_menu(app)?;
 
     let mut builder = TrayIconBuilder::with_id("glow")
         .tooltip("Glow")
@@ -97,7 +159,7 @@ static HOTKEYS: Mutex<Vec<(Shortcut, &'static str)>> = Mutex::new(Vec::new());
 fn hotkey_table(media: bool) -> Vec<(Shortcut, &'static str, &'static str)> {
     let ca = Some(Modifiers::CONTROL | Modifiers::ALT);
     let mut v = vec![
-        (Shortcut::new(ca, Code::Space), "play", "Ctrl+Alt+Пробел"),
+        (Shortcut::new(ca, Code::Space), "play", "Ctrl+Alt+Space"),
         (Shortcut::new(ca, Code::ArrowRight), "next", "Ctrl+Alt+→"),
         (Shortcut::new(ca, Code::ArrowLeft), "prev", "Ctrl+Alt+←"),
         (Shortcut::new(ca, Code::ArrowUp), "volup", "Ctrl+Alt+↑"),
@@ -288,13 +350,13 @@ pub mod thumbbar {
             dwFlags: THBF_ENABLED,
         };
         [
-            mk(ID_PREV, bar.icons[0], "Предыдущий"),
+            mk(ID_PREV, bar.icons[0], super::l("Предыдущий", "Previous")),
             if bar.playing {
-                mk(ID_PLAY, bar.icons[2], "Пауза")
+                mk(ID_PLAY, bar.icons[2], super::l("Пауза", "Pause"))
             } else {
-                mk(ID_PLAY, bar.icons[1], "Играть")
+                mk(ID_PLAY, bar.icons[1], super::l("Играть", "Play"))
             },
-            mk(ID_NEXT, bar.icons[3], "Следующий"),
+            mk(ID_NEXT, bar.icons[3], super::l("Следующий", "Next")),
         ]
     }
 
@@ -380,6 +442,16 @@ pub mod thumbbar {
                         bar.playing = playing;
                         sync(bar);
                     }
+                }
+            });
+        });
+    }
+    /// Обновить подсказки кнопок (после смены языка).
+    pub fn refresh(app: &AppHandle) {
+        let _ = app.run_on_main_thread(move || {
+            BAR.with(|b| {
+                if let Some(bar) = b.borrow_mut().as_mut() {
+                    sync(bar);
                 }
             });
         });

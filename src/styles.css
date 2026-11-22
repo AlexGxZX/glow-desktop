@@ -1226,3 +1226,62 @@ body.square .set-tabs, body.square .set-tab { border-radius: 0; }
 .wr-fact { padding: 18px 20px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); }
 .wr-fact .r-title { font-size: 18px; margin-top: 6px; }
 @media (max-width: 1100px) { .wr-cols, .wr-facts { grid-template-columns: 1fr; } .wr-albums { grid-template-columns: repeat(3, 1fr); } }
+.upd-notes p { margin: 0 0 8px; }
+.upd-notes ul { margin: 4px 0 10px; padding-left: 20px; }
+.upd-notes li { margin: 3px 0; }
+.upd-notes .upd-h { font-weight: 700; margin: 10px 0 6px; }
+.upd-notes .upd-h:first-child { margin-top: 0; }
+.upd-notes code { font-family: Consolas, monospace; font-size: .92em; padding: 1px 5px; border-radius: 5px; background: var(--surface); }
+
+/* ===== Сцены экрана плеера ===== */
+.now.has-scene .now-cover { opacity: 0; box-shadow: none !important; }
+.now.has-scene .now-cover::before, .now.has-scene .now-cover::after { display: none !important; }
+
+/* ===== Сетка стилей: группы и живые превью ===== */
+.sg-title { margin: 18px 0 10px; }
+.sg-title:first-of-type { margin-top: 4px; }
+.style-prev { position: relative; overflow: hidden; }
+.style-card .sc-tag { position: absolute; z-index: 3; right: 8px; bottom: 8px; padding: 2px 8px; border-radius: 9px; font-size: 10.5px; font-weight: 600; letter-spacing: .02em; color: #fff; background: rgba(0,0,0,.45); backdrop-filter: blur(6px); }
+.md3-card .sc-tag { bottom: auto; top: 8px; right: 86px; }
+/* Частицы мотива — живут прямо в карточке. */
+.style-card[class*="sig-"] .style-prev::after { content: ""; position: absolute; inset: -40px; z-index: 2; pointer-events: none; opacity: .9; }
+.sig-rays .style-prev::after { background: repeating-conic-gradient(from 100deg at 0 0, color-mix(in srgb, var(--sa) 22%, transparent) 0 4deg, transparent 4deg 13deg); animation: sg-rays 9s ease-in-out infinite alternate; }
+.sig-velvet .style-prev::after, .sig-dust .style-prev::after, .sig-pollen .style-prev::after, .sig-fireflies .style-prev::after, .sig-embers .style-prev::after, .sig-eclipse .style-prev::after {
+  background:
+    radial-gradient(1.6px 1.6px at 12% 30%, var(--dot, #fff) 98%, transparent),
+    radial-gradient(1.2px 1.2px at 38% 70%, var(--dot, #fff) 98%, transparent),
+    radial-gradient(2px 2px at 62% 22%, var(--dot, #fff) 98%, transparent),
+    radial-gradient(1.4px 1.4px at 80% 58%, var(--dot, #fff) 98%, transparent),
+    radial-gradient(1.8px 1.8px at 24% 86%, var(--dot, #fff) 98%, transparent),
+    radial-gradient(1.2px 1.2px at 90% 12%, var(--dot, #fff) 98%, transparent);
+  background-size: 140px 110px; filter: drop-shadow(0 0 3px var(--dot, #fff));
+}
+.sig-velvet { --dot: #f3d38a; } .sig-velvet .style-prev::after { animation: sg-twinkle 2.6s ease-in-out infinite; }
+.sig-dust { --dot: #c98a5e; } .sig-dust .style-prev::after { animation: sg-drift 14s linear infinite; opacity: .55; }
+.sig-pollen { --dot: #f2f0c2; } .sig-pollen .style-prev::after { animation: sg-rise 12s linear infinite; }
+.sig-fireflies { --dot: #e9ff9a; } .sig-fireflies .style-prev::after { animation: sg-twinkle 1.8s ease-in-out infinite, sg-drift 16s linear infinite; }
+.sig-embers { --dot: #ff9a4a; } .sig-embers .style-prev::after { animation: sg-rise 5s linear infinite; }
+.sig-eclipse { --dot: #fff4dc; } .sig-eclipse .style-prev::after { animation: sg-twinkle 3s ease-in-out infinite; opacity: .5; }
+.sig-snow .style-prev::after { background: radial-gradient(1.6px 1.6px at 20% 20%, #fff 98%, transparent), radial-gradient(1.2px 1.2px at 60% 60%, #fff 98%, transparent), radial-gradient(2px 2px at 85% 35%, #fff 98%, transparent), radial-gradient(1.3px 1.3px at 40% 85%, #fff 98%, transparent); background-size: 90px 80px; filter: drop-shadow(0 0 1px #7a8796); animation: sg-fall 9s linear infinite; }
+.sig-neonrain .style-prev::after { background: repeating-linear-gradient(90deg, transparent 0 17px, color-mix(in srgb, var(--sa) 60%, transparent) 17px 18px, transparent 18px 41px); -webkit-mask: repeating-linear-gradient(180deg, #000 0 14px, transparent 14px 46px); mask: repeating-linear-gradient(180deg, #000 0 14px, transparent 14px 46px); animation: sg-rain .9s linear infinite; }
+.sig-frost .style-prev::after, .sig-crystals .style-prev::after { background: radial-gradient(1.4px 6px at 20% 30%, #fff 60%, transparent), radial-gradient(6px 1.4px at 20% 30%, #fff 60%, transparent), radial-gradient(1.2px 5px at 72% 64%, #fff 60%, transparent), radial-gradient(5px 1.2px at 72% 64%, #fff 60%, transparent); background-size: 120px 96px; filter: drop-shadow(0 0 3px var(--sa)); animation: sg-twinkle 2.2s ease-in-out infinite; }
+.sig-crystals .style-prev::after { background: conic-gradient(from 45deg at 30% 40%, transparent 0 80deg, color-mix(in srgb, var(--sa) 40%, transparent) 80deg 100deg, transparent 100deg) , conic-gradient(from 225deg at 75% 70%, transparent 0 80deg, color-mix(in srgb, var(--sb) 35%, transparent) 80deg 100deg, transparent 100deg); background-size: 100% 100%; }
+.sig-bubbles .style-prev::after { background: radial-gradient(circle at 22% 70%, transparent 4px, rgba(255,255,255,.45) 4.5px 5.5px, transparent 6px), radial-gradient(circle at 70% 40%, transparent 2.5px, rgba(255,255,255,.4) 3px 4px, transparent 4.5px), radial-gradient(circle at 50% 90%, transparent 3px, rgba(255,255,255,.35) 3.5px 4.5px, transparent 5px); background-size: 110px 90px; animation: sg-rise 7s linear infinite; }
+.sig-drops .style-prev::after { background: radial-gradient(2.5px 6px at 25% 30%, color-mix(in srgb, var(--sa) 70%, transparent) 98%, transparent), radial-gradient(2px 5px at 70% 60%, color-mix(in srgb, var(--sa) 60%, transparent) 98%, transparent); background-size: 100px 90px; animation: sg-fall 6s linear infinite; }
+/* Сцена — значок обложки превращается в объект сцены. */
+.scene-vinyl .sp-cover { border-radius: 50% !important; background: radial-gradient(circle, var(--sa) 0 26%, #0b0b0d 27% 30%, #1a1a1f 31%, #0b0b0d 33%, #18181c 37%, #0b0b0d 40%, #1a1a1f 46%, #0b0b0d 50%, #19191d 58%, #0b0b0d 62%, #18181c 70%, #08080a 100%) !important; box-shadow: 0 0 18px color-mix(in srgb, var(--sa) 70%, transparent) !important; animation: sg-spin 3s linear infinite; }
+.scene-cassette .sp-cover { border-radius: 5px !important; width: 74px !important; height: 46px !important; background: radial-gradient(circle at 30% 55%, var(--sa) 0 5px, #ddd 5.5px 8px, transparent 8.5px), radial-gradient(circle at 70% 55%, var(--sa) 0 5px, #ddd 5.5px 8px, transparent 8.5px), linear-gradient(#e9e4f3 0 70%, #1b1a20 70%) !important; box-shadow: 0 6px 16px -4px color-mix(in srgb, var(--sa) 70%, transparent), 0 0 0 3px #25232b !important; }
+.scene-led .sp-cover { background: radial-gradient(circle, var(--sa) 0 1.6px, transparent 2px) 0 0 / 6px 6px, #08080a !important; box-shadow: 0 0 16px color-mix(in srgb, var(--sa) 55%, transparent) !important; }
+.scene-lava .sp-cover { box-shadow: -10px 8px 22px 6px color-mix(in srgb, var(--sa) 60%, transparent), 12px -6px 20px 4px color-mix(in srgb, var(--sb) 50%, transparent) !important; animation: sg-lava 6s ease-in-out infinite alternate; }
+.scene-planet .sp-cover { border-radius: 50% !important; box-shadow: 0 0 0 2px color-mix(in srgb, var(--sa) 40%, transparent), 0 0 24px var(--sa) !important; }
+.scene-planet .sp-cover::after { content: ""; position: absolute; left: -16px; right: -16px; top: 42%; height: 14px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--sa) 70%, transparent); transform: rotate(-16deg); }
+.md3-card.sig-eclipse .style-prev > div:nth-child(4) { background: #0b0b0c !important; box-shadow: 0 0 0 2px #fff4dc, 0 0 22px 6px color-mix(in srgb, #fff4dc 55%, transparent); border-radius: 50% !important; }
+@keyframes sg-rays { from { transform: rotate(-4deg); } to { transform: rotate(6deg); } }
+@keyframes sg-twinkle { 0%, 100% { opacity: .25; } 50% { opacity: .95; } }
+@keyframes sg-drift { to { background-position: 140px 40px; } }
+@keyframes sg-rise { to { background-position: 0 -110px; } }
+@keyframes sg-fall { to { background-position: 0 80px; } }
+@keyframes sg-rain { to { background-position: 0 0, 0 46px; -webkit-mask-position: 0 46px; mask-position: 0 46px; } }
+@keyframes sg-spin { to { transform: rotate(360deg); } }
+@keyframes sg-lava { to { box-shadow: 10px -8px 22px 6px color-mix(in srgb, var(--sa) 60%, transparent), -12px 8px 20px 4px color-mix(in srgb, var(--sb) 50%, transparent) !important; } }
+body.no-anim .style-card .style-prev::after, body.no-anim .style-card .sp-cover { animation: none !important; }

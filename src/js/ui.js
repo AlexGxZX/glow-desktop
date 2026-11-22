@@ -1,7 +1,7 @@
 // Glow для ПК — ui.js (часть интерфейса, вынесена из main.js).
 
 import { I } from './icons.js';
-import { applyTheme, extractPalette } from './theme.js';
+import { STYLES, applyTheme, extractPalette } from './theme.js';
 import { MOTIONS } from './visuals.js';
 import { showMenu } from './dialogs.js';
 import { addToQueue, next, playNext, playTracks, startMeters } from './player.js';
@@ -23,11 +23,19 @@ export async function refreshTheme() {
   S.palette = pal;
   S.theme = applyTheme(settings, pal);
   visuals.setTheme(S.theme);
-  ambient.set(S.theme.fx, S.theme, settings.animations);
+  ambient.set(S.theme.fx || (settings.styleMotifs !== false ? S.theme.motif : null), S.theme, settings.animations);
   startMeters();
   const bgUrl = url ? `url("${url}")` : 'none';
   $('#bg-art').style.backgroundImage = bgUrl;
   $('#now-blur').style.backgroundImage = bgUrl;
+}
+
+/** Сцене нужна обложка и треки альбома (луны у планеты). */
+export function sceneTrack() {
+  const t = curTrack();
+  if (!visuals.scenes.active) return;
+  const al = t && t._album ? S.albumByKey.get(t._album) : null;
+  visuals.scenes.setTrack(t, t && t.cover ? fileSrc(t.cover) : null, al ? al.tracks : []);
 }
 
 export function applyVisualSettings() {
@@ -38,6 +46,13 @@ export function applyVisualSettings() {
   visuals.animations = settings.animations;
   const now = $('#now');
   now.classList.toggle('mode-blur', v.backdrop === 'blur');
+  // Сцена: своя у стиля или выбранная в настройках.
+  const st = STYLES[settings.style] || {};
+  const scene = v.scene && v.scene !== 'auto' ? v.scene : settings.scene && settings.scene !== 'auto' ? settings.scene : st.scene || 'none';
+  visuals.scenes.set(scene);
+  now.classList.toggle('has-scene', visuals.scenes.active);
+  now.dataset.scene = visuals.scenes.kind;
+  sceneTrack();
   const c = $('#now-cover');
   for (const m of Object.keys(MOTIONS)) c.classList.toggle(`motion-${m}`, v.motion === m);
   c.style.setProperty('--pulse', 0);

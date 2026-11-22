@@ -1,6 +1,7 @@
 // Glow для ПК — точка входа: запуск и связывание модулей.
 
 import { I } from './icons.js';
+import { initI18n } from './i18n.js';
 import { STYLES, applyTheme } from './theme.js';
 import { createEditor, registerCustom } from './editor.js';
 import { confirmModal, openModal, promptModal } from './dialogs.js';
@@ -12,11 +13,14 @@ import { setAppIcon } from './settings.js';
 import { normalizeSidebar, renderSidebar } from './sidebar.js';
 import { S, ambient, curTrack, editor, engine, saveSettings, setLibrary, settings, visuals, setEditor } from './state.js';
 import { applyAudio, applyVisualSettings, refreshTheme } from './ui.js';
-import { $, esc, fileSrc, invoke, toast } from './util.js';
+import { $, LANG, esc, fileSrc, invoke, toast } from './util.js';
 import { render } from './views.js';
 import { checkUpdates } from './updates.js';
 import { initOnline } from './online.js';
 import { initDrop } from './collection.js';
+
+// Перевод интерфейса включается до первой отрисовки.
+initI18n();
 
 // ================= Material 3: формы, волна от клика =================
 
@@ -157,7 +161,7 @@ export async function init() {
   applyVisualSettings();
   S.theme = applyTheme(settings, null);
   visuals.setTheme(S.theme);
-  ambient.set(S.theme.fx, S.theme, settings.animations);
+  ambient.set(S.theme.fx || (settings.styleMotifs !== false ? S.theme.motif : null), S.theme, settings.animations);
   renderSidebar();
   updateButtons();
 
@@ -172,6 +176,7 @@ export async function init() {
   applyDesktop();
   watchFolders();
   setTimeout(() => checkUpdates(false), 8000);
+  invoke('set_ui_lang', { lang: LANG }).catch(() => {});
   initOnline();
   initDrop();
   if (settings.scanOnStart && settings.folders.length) scan();

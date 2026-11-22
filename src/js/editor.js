@@ -3,6 +3,7 @@
 // Любой слой и любой параметр можно сбросить к исходному стилю, на котором основан свой.
 // Черновик сохраняется сам, у сохранённого стиля хранится история версий, есть отмена шагов.
 
+import { LOCALE } from './util.js';
 import { STYLES, md3Scheme, contrast, mix, hexToRgb, rgbToHex, rgbToHsl, hslToHex } from './theme.js';
 import { BACKDROPS, MOTIONS } from './visuals.js';
 
@@ -321,7 +322,7 @@ export function createEditor(ctx) {
     // Черновик того же стиля — предложить восстановить.
     const draft = lsGet(DRAFT, null);
     if (draft && draft.targetId === st.targetId && (!target || draft.at > (target.updated || 0)) && draft.layers) {
-      const ok = await confirmModal('Восстановить черновик?', `Есть несохранённые изменения от ${new Date(draft.at).toLocaleString('ru')}.`, 'Восстановить');
+      const ok = await confirmModal('Восстановить черновик?', `Есть несохранённые изменения от ${new Date(draft.at).toLocaleString(LOCALE)}.`, 'Восстановить');
       if (ok) { st.name = draft.name; st.layers = draft.layers; st.css = draft.css || ''; dirty = true; }
     }
 
@@ -392,7 +393,7 @@ export function createEditor(ctx) {
   function showVersions() {
     const item = st.targetId ? loadCustom().find((c) => c.id === st.targetId) : null;
     const versions = item ? item.versions || [] : [];
-    const rows = versions.map((v, i) => `<div class="ver-row"><div><div class="body-strong">${esc(v.name)}</div><div class="caption">${new Date(v.at).toLocaleString('ru')}</div></div><button class="btn" data-ver="${i}">Открыть</button></div>`).join('');
+    const rows = versions.map((v, i) => `<div class="ver-row"><div><div class="body-strong">${esc(v.name)}</div><div class="caption">${new Date(v.at).toLocaleString(LOCALE)}</div></div><button class="btn" data-ver="${i}">Открыть</button></div>`).join('');
     const m = openModal(`<div class="modal-head"><div class="heading">История версий</div><button class="icon-btn" data-close>${I.close}</button></div>
       ${rows ? `<div class="caption" style="margin-bottom:10px">При каждом сохранении предыдущая версия попадает сюда, хранятся последние 20. «Открыть» загружает версию в редактор — сохрани, чтобы закрепить.</div><div class="ver-list">${rows}</div>`
         : '<div class="muted">Пока нет предыдущих версий. Они появятся после второго сохранения стиля.</div>'}`);
@@ -486,7 +487,7 @@ export function createEditor(ctx) {
       <button class="icon-btn" data-ed="redo" title="Повторить (Ctrl+Y)" ${hidx < hist.length - 1 ? '' : 'disabled'}>${I.next}</button>
       <button class="icon-btn" data-ed="versions" title="История версий">${I.history}</button>
       <button class="icon-btn" data-ed="cancel" title="Закрыть">${I.close}</button></div>
-      <div class="caption ed-status">${st.savedReset ? 'Сброс возвращает к последнему сохранению' : `Основан на «${esc(baseName)}»`} · ${dirty ? (draftAt ? `черновик сохранён в ${new Date(draftAt).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : 'есть изменения') : 'без изменений'}</div>`;
+      <div class="caption ed-status">${st.savedReset ? 'Сброс возвращает к последнему сохранению' : `Основан на «${esc(baseName)}»`} · ${dirty ? (draftAt ? `черновик сохранён в ${new Date(draftAt).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : 'есть изменения') : 'без изменений'}</div>`;
   }
 
   function fieldHtml(layer, [key, type, label, a, b, step, unit]) {

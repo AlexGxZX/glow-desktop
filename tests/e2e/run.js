@@ -68,7 +68,7 @@ const browser = await chromium.launch({ executablePath: process.env.GLOW_CHROME 
 const results = [];
 
 async function page(init) {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, locale: 'ru-RU' });
   const pg = await ctx.newPage();
   pg.errors = [];
   pg.on('pageerror', (e) => pg.errors.push(String(e)));
@@ -353,6 +353,89 @@ await scenario('итоги года', async (pg) => {
   check(await pg.$('[data-go="wrapped"][data-key="2025"]'), 'нет переключателя годов');
   await pg.screenshot({ path: path.join(shots, 'wrapped.png'), fullPage: false });
 }, { init: "sessionStorage.setItem('seedHistory', '1');" });
+
+await scenario('английский интерфейс', async (pg) => {
+  const leftovers = async () => pg.evaluate(() => {
+    const skip = '.row, .r-album, .r-title, .r-sub, .card-title, .lyrics, #pb-title, #pb-artist, .now-title, .now-artist, .sh-title, [data-noi18n], textarea, .nav-pin, .vh-meta, .display, .chip, .card, .rl-path, .dupe-path, .field, .lrow';
+    const out = new Set();
+    const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let n;
+    while ((n = w.nextNode())) {
+      const p = n.parentElement;
+      if (!p || p.closest(skip) || !p.offsetParent) continue;
+      if (/[А-Яа-яЁё]/.test(n.nodeValue)) out.add(n.nodeValue.trim().slice(0, 80) + ' ← ' + p.className + ' / ' + (p.parentElement && p.parentElement.className));
+    }
+    return [...out];
+  });
+  check((await pg.textContent('#sidebar')).includes('Tracks'), 'меню не переведено');
+  const bad = new Set(await leftovers());
+  for (const tab of ['look', 'player', 'library', 'online', 'system', 'about']) {
+    await pg.click('#sidebar [data-view="settings"]');
+    await pg.click(`[data-settab="${tab}"]`);
+    await sleep(150);
+    (await leftovers()).forEach((x) => bad.add(x));
+  }
+  for (const v of ['albums', 'artists', 'genres', 'folders', 'favorites', 'history', 'stats', 'wrapped']) {
+    await pg.click(`#sidebar [data-view="${v}"]`);
+    await sleep(150);
+    (await leftovers()).forEach((x) => bad.add(x));
+  }
+  await pg.click('#sidebar [data-view="tracks"]');
+  await pg.click('.row[data-i="0"]', { button: 'right' });
+  await sleep(150);
+  (await leftovers()).forEach((x) => bad.add(x));
+  await pg.keyboard.press('Escape');
+  await pg.click('#sidebar [data-view="settings"]');
+  await pg.click('[data-settab="look"]');
+  await sleep(200);
+  await pg.screenshot({ path: path.join(shots, 'english.png') });
+  // Русские названия треков переводиться не должны.
+  await pg.click('#sidebar [data-view="tracks"]');
+  await sleep(150);
+  check((await pg.textContent('#content')).includes('Последний трамвай'), 'перевёл название трека');
+  check(!bad.size, 'остался русский текст:\n  ' + [...bad].join('\n  '));
+}, { init: "sessionStorage.setItem('mockFiles', JSON.stringify({ settings: JSON.stringify({ lang: 'en' }) }));" });
+
+await scenario('сцены экрана плеера', async (pg) => {
+  await pg.dblclick('.row[data-i="1"]');
+  await sleep(300);
+  for (const sc of ['vinyl', 'cassette', 'led', 'lava', 'planet']) {
+    await pg.keyboard.press('Escape');
+    await pg.click('#sidebar [data-view="settings"]');
+    await pg.click('[data-settab="player"]');
+    await pg.selectOption('[data-set="scene"]', sc);
+    await sleep(100);
+    await pg.keyboard.press('n');
+    await sleep(1600);
+    check(await pg.$eval('#now', (n, k) => n.classList.contains('has-scene') && n.dataset.scene === k, sc), `сцена ${sc} не включилась`);
+    await pg.screenshot({ path: path.join(shots, `scene-${sc}.png`) });
+  }
+});
+
+await scenario('подписи стилей', async (pg) => {
+  await pg.dblclick('.row[data-i="1"]');
+  await sleep(300);
+  await pg.click('#sidebar [data-view="settings"]');
+  await sleep(300);
+  await pg.screenshot({ path: path.join(shots, 'style-grid.png') });
+  await pg.evaluate(() => document.querySelector('.md3-card').scrollIntoView({ block: 'center' }));
+  await sleep(300);
+  await pg.screenshot({ path: path.join(shots, 'style-grid-md3.png') });
+  for (const st of ['aura', 'noir', 'nordic', 'softdark', 'copper', 'obsidian', 'midnight', 'paper', 'amethyst']) {
+    await pg.click('#sidebar [data-view="settings"]');
+    await pg.click(`[data-style="${st}"]`);
+    await pg.click('#sidebar [data-view="albums"]');
+    await sleep(1200);
+    await pg.screenshot({ path: path.join(shots, `motif-${st}.png`) });
+    if (st === 'obsidian' || st === 'copper' || st === 'midnight') {
+      await pg.keyboard.press('n');
+      await sleep(1500);
+      await pg.screenshot({ path: path.join(shots, `motif-${st}-now.png`) });
+      await pg.keyboard.press('Escape');
+      await sleep(300);
+    }
+  }
+});
 
 await scenario('обновление: кнопка в настройках показывает новую версию', async (pg) => {
   await pg.evaluate(() => sessionStorage.setItem('fakeUpdate', '1'));

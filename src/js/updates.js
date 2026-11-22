@@ -31,11 +31,27 @@ export async function checkUpdates(manual = false) {
   }
 }
 
+/** Описание релиза с GitHub: заголовки, списки, **жирный**, `код`, ссылки как текст. */
+export function markdown(src) {
+  const inline = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+  let html = '', list = false;
+  for (const raw of String(src).replace(/\r/g, '').split('\n')) {
+    const line = raw.trim();
+    const li = /^[-*•]\s+(.*)$/.exec(line);
+    if (li && li[1]) { if (!list) { html += '<ul>'; list = true; } html += `<li>${inline(li[1])}</li>`; continue; }
+    if (list) { html += '</ul>'; list = false; }
+    if (!line || /^[-*•]$/.test(line)) continue;
+    const h = /^#{1,6}\s+(.*)$/.exec(line);
+    html += h ? `<div class="upd-h">${inline(h[1])}</div>` : `<p>${inline(line)}</p>`;
+  }
+  return html + (list ? '</ul>' : '');
+}
+
 function offer(u) {
   const notes = (u.notes || '').trim();
   const m = openModal(`<div class="modal-head"><div class="heading">Вышел Glow ${esc(u.version)}</div><button class="icon-btn" data-close>${I.close}</button></div>
     <div class="muted" style="margin-bottom:12px">Сейчас у тебя ${esc(u.current)}. Плейлисты, настройки и стили сохранятся — Glow поставит обновление сам и перезапустится.</div>
-    ${notes ? `<div class="upd-notes">${esc(notes).replace(/\n/g, '<br>')}</div>` : ''}
+    ${notes ? `<div class="upd-notes" data-noi18n>${markdown(notes)}</div>` : ''}
     <div class="upd-bar hidden"><div></div></div>
     <div class="modal-foot"><button class="btn" id="upd-skip">Пропустить версию</button><button class="btn" data-close>Позже</button><button class="btn primary" id="upd-go">${I.check}Обновить</button></div>`);
   $('#upd-skip', m.el).onclick = () => { meta.updateSkip = u.version; saveMeta(); m.close(); };

@@ -2,6 +2,7 @@
 // и частицы в бит, которые вылетают из-за обложки.
 
 import { rgba, mix, HOLO_COLORS } from './theme.js';
+import { Scenes } from './scenes.js';
 
 export const BACKDROPS = {
   glow: 'Свечение',
@@ -38,6 +39,7 @@ export class Visuals {
     this.anchor = () => ({ x: this.w / 2, y: this.h / 2, r: 160 });
     this.onPulse = () => {};
     this.t0 = performance.now();
+    this.scenes = new Scenes();
     this._loop = this._loop.bind(this);
     new ResizeObserver(() => this._resize()).observe(canvas);
   }
@@ -201,6 +203,30 @@ export class Visuals {
       cx.restore();
     }
 
+    // Obsidian: затмение — обложка закрывает «солнце», из-за неё выбивается корона.
+    if (th.eclipse && !this.scenes.active) {
+      const R = a.r * 1.02;
+      const cor = cx.createRadialGradient(a.x, a.y, R * 0.96, a.x, a.y, R * (1.9 + level * 0.4 + this.pulse * 0.3));
+      cor.addColorStop(0, rgba(mix(acc, '#ffffff', 0.7), 0.95));
+      cor.addColorStop(0.08, rgba(mix(acc, '#ffffff', 0.4), 0.55));
+      cor.addColorStop(0.35, rgba(acc, 0.16));
+      cor.addColorStop(1, rgba(acc, 0));
+      cx.fillStyle = cor;
+      cx.beginPath(); cx.arc(a.x, a.y, R * 2.4, 0, Math.PI * 2); cx.fill();
+      // Протуберанцы: медленные лучи короны, вспыхивают на ударах.
+      cx.save(); cx.translate(a.x, a.y);
+      cx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 14; i++) {
+        const ang = i * (Math.PI * 2 / 14) + t * 0.03 + Math.sin(t * 0.2 + i) * 0.08;
+        const len = R * (0.35 + 0.25 * Math.abs(Math.sin(t * 0.4 + i * 1.7)) + this.pulse * 0.4);
+        const g = cx.createLinearGradient(Math.cos(ang) * R, Math.sin(ang) * R, Math.cos(ang) * (R + len), Math.sin(ang) * (R + len));
+        g.addColorStop(0, rgba(mix(acc, '#ffffff', 0.5), 0.45)); g.addColorStop(1, rgba(acc, 0));
+        cx.strokeStyle = g; cx.lineWidth = R * 0.05; cx.lineCap = 'round';
+        cx.beginPath(); cx.moveTo(Math.cos(ang) * R, Math.sin(ang) * R); cx.lineTo(Math.cos(ang) * (R + len), Math.sin(ang) * (R + len)); cx.stroke();
+      }
+      cx.restore();
+    }
+
     // Studio: аккуратный спектр над панелью управления.
     if (th.studio) {
       const n = 72, sp = this.engine.spectrum(n);
@@ -224,6 +250,12 @@ export class Visuals {
       g.addColorStop(1, rgba(acc, 0));
       cx.fillStyle = g;
       cx.fillRect(0, 0, w, h);
+    }
+
+    // Сцена вместо обложки: винил, кассета, матрица, жидкий свет, планета.
+    if (this.scenes.active) {
+      const e = this.engine;
+      this.scenes.draw(cx, a, th, lv, { playing: e.playing, time: e.time || 0, duration: e.duration || 0, spectrum: e.spectrum(32) }, this.animations ? t : 0);
     }
 
     // Частицы в бит.
@@ -269,6 +301,41 @@ export class Visuals {
           cx.save(); cx.translate(p.x, p.y); cx.rotate(p.rot);
           cx.beginPath(); cx.moveTo(0, -p.size * 1.6); cx.lineTo(p.size, 0); cx.lineTo(0, p.size * 1.6); cx.lineTo(-p.size, 0); cx.closePath(); cx.fill();
           cx.restore();
+        } else if (shape === 'snow') {
+          // Nordic: снежинка с шестью лучами.
+          cx.strokeStyle = th.light ? rgba(mix(p.col, '#5a6a7a', 0.4), 0.9) : '#ffffff'; cx.lineWidth = 1;
+          cx.save(); cx.translate(p.x, p.y); cx.rotate(p.rot);
+          for (let i = 0; i < 3; i++) { cx.rotate(Math.PI / 3); cx.beginPath(); cx.moveTo(-p.size * 1.4, 0); cx.lineTo(p.size * 1.4, 0); cx.stroke(); }
+          cx.restore();
+        } else if (shape === 'firefly' || shape === 'pollen' || shape === 'ember') {
+          // Soft Dark — светлячки, Sage — пыльца, Copper — угли: мягкие огоньки разного тепла.
+          const col = shape === 'firefly' ? mix(p.col, '#f6ff9a', 0.45) : shape === 'ember' ? mix(p.col, '#ff7a33', 0.5) : mix(p.col, '#fff4c8', 0.4);
+          if (shape === 'ember') p.vy -= 1.2;
+          const blink = shape === 'firefly' ? 0.4 + 0.6 * Math.abs(Math.sin(p.life * 9 + p.rot)) : 1;
+          const g = cx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 2.6);
+          g.addColorStop(0, rgba('#ffffff', 0.95 * blink)); g.addColorStop(0.3, rgba(col, 0.85 * blink)); g.addColorStop(1, rgba(col, 0));
+          cx.fillStyle = g;
+          cx.beginPath(); cx.arc(p.x, p.y, p.size * 2.6, 0, Math.PI * 2); cx.fill();
+        } else if (shape === 'frost') {
+          // Midnight Blue: холодные четырёхлучевые искры.
+          const r = p.size * 1.8;
+          cx.strokeStyle = mix(p.col, '#ffffff', 0.6); cx.lineWidth = 1;
+          cx.beginPath(); cx.moveTo(p.x - r, p.y); cx.lineTo(p.x + r, p.y); cx.moveTo(p.x, p.y - r); cx.lineTo(p.x, p.y + r); cx.stroke();
+          cx.fillStyle = '#ffffff'; cx.beginPath(); cx.arc(p.x, p.y, 1.2, 0, Math.PI * 2); cx.fill();
+        } else if (shape === 'crystal') {
+          // Amethyst: грани кристалла с бликом.
+          cx.save(); cx.translate(p.x, p.y); cx.rotate(p.rot);
+          cx.fillStyle = rgba(p.col, 0.85);
+          cx.beginPath(); cx.moveTo(0, -p.size * 2); cx.lineTo(p.size * 0.8, -p.size * 0.4); cx.lineTo(0, p.size * 2); cx.lineTo(-p.size * 0.8, -p.size * 0.4); cx.closePath(); cx.fill();
+          cx.strokeStyle = 'rgba(255,255,255,.7)'; cx.lineWidth = 0.8;
+          cx.beginPath(); cx.moveTo(0, -p.size * 2); cx.lineTo(0, p.size * 2); cx.stroke();
+          cx.restore();
+        } else if (shape === 'drop') {
+          // Burgundy: капли, которые под своим весом падают вниз.
+          p.vy += 6;
+          const r = p.size;
+          cx.fillStyle = rgba(p.col, 0.9);
+          cx.beginPath(); cx.moveTo(p.x, p.y - r * 2.4); cx.quadraticCurveTo(p.x + r, p.y, p.x, p.y + r); cx.quadraticCurveTo(p.x - r, p.y, p.x, p.y - r * 2.4); cx.fill();
         } else if (shape === 'spark') {
           cx.fillStyle = p.col;
           cx.save(); cx.translate(p.x, p.y); cx.rotate(Math.PI / 4);

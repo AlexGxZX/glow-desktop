@@ -1,5 +1,6 @@
 // Glow для ПК — features.js (часть интерфейса, вынесена из main.js).
 
+import { t as tl } from './i18n.js';
 import { I } from './icons.js';
 import { openModal } from './dialogs.js';
 import { row } from './settings.js';
@@ -144,14 +145,14 @@ export async function exportSync() {
     tracks,
   };
   try {
-    const ok = await invoke('save_file', { name: `Glow-${new Date().toISOString().slice(0, 10)}.glowsync`, content: JSON.stringify(doc), ext: 'glowsync', label: 'Обмен Glow' });
+    const ok = await invoke('save_file', { name: `Glow-${new Date().toISOString().slice(0, 10)}.glowsync`, content: JSON.stringify(doc), ext: 'glowsync', label: tl('Обмен Glow') });
     if (ok) toast('Файл обмена сохранён — открой его в Glow на телефоне');
   } catch (e) { toast(`Не удалось сохранить: ${e}`); }
 }
 
 export async function importSync() {
   try {
-    const path = await invoke('pick_file', { exts: ['glowsync', 'json'], label: 'Обмен Glow' });
+    const path = await invoke('pick_file', { exts: ['glowsync', 'json'], label: tl('Обмен Glow') });
     if (!path) return;
     const doc = JSON.parse(await invoke('read_text', { path }));
     if (!doc || doc.format !== 'glowsync') throw new Error('Это не файл обмена Glow');

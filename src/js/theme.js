@@ -7,6 +7,8 @@ export const STYLES = {
     surface: 'rgba(255,255,255,0.06)', strong: 'rgba(28,28,36,0.92)', line: 'rgba(255,255,255,0.07)',
     accent: '#7c5cff', btn: '#f4f4f6', onBtn: '#0b0b0f',
     glow: 1, radius: 20, cover: 28, particle: 'dot',
+
+    motif: 'rays',
   },
   dynamic: {
     name: 'Dynamic Art', sub: 'Цвет обложки', dynamic: true,
@@ -21,6 +23,8 @@ export const STYLES = {
     surface: '#121211', strong: 'rgba(22,22,20,0.95)', line: '#22211e',
     accent: '#e2b857', btn: '#e2b857', onBtn: '#16120a',
     glow: 0.45, radius: 18, cover: 18, particle: 'spark',
+
+    motif: 'velvet', scene: 'vinyl',
   },
   light: {
     name: 'Clean Light', sub: 'Светлая', light: true,
@@ -70,6 +74,8 @@ export const STYLES = {
     surface: '#0e0e10', strong: 'rgba(9,9,11,0.97)', line: '#1d1d21',
     accent: '#ff2e63', btn: 'rgba(0,0,0,0)', onBtn: '#ff2e63',
     glow: 0.6, radius: 4, cover: 4, particle: 'streak',
+
+    motif: 'neonrain',
   },
   space: {
     name: 'Deep Space', sub: 'Космическая глубина', fx: 'space', blur: true,
@@ -78,6 +84,8 @@ export const STYLES = {
     accent: '#8b7bff', btn: '#eef0ff', onBtn: '#05061a',
     glow: 0.95, radius: 20, cover: 24, particle: 'star',
     preview: 'radial-gradient(1.5px 1.5px at 20% 30%, #fff, transparent), radial-gradient(1px 1px at 70% 20%, #fff, transparent), radial-gradient(1px 1px at 85% 75%, #fff, transparent), radial-gradient(1.5px 1.5px at 40% 85%, #fff, transparent), radial-gradient(55% 75% at 75% 35%, #8b7bff77, transparent 70%), radial-gradient(45% 60% at 15% 80%, #3fb5ff55, transparent 70%), #05061a',
+
+    scene: 'planet',
   },
   soft: {
     name: 'Soft Minimal', sub: 'Мягкий минимализм', light: true, soften: 0.35,
@@ -92,6 +100,8 @@ export const STYLES = {
     surface: '#f8f9f9', strong: 'rgba(248,249,249,0.96)', line: '#dde1e4',
     accent: '#5b7a99', btn: '#1f2326', onBtn: '#f8f9f9',
     glow: 0.15, radius: 10, cover: 10, particle: 'dot',
+
+    motif: 'snow', particle: 'snow',
   },
   fluent: {
     name: 'Fluent', sub: 'Windows 11, Mica', mica: true, blur: true, btnAccent: true,
@@ -107,6 +117,8 @@ export const STYLES = {
     surface: '#141414', strong: 'rgba(12,12,12,0.97)', line: '#262626',
     accent: '#f2f2f2', btn: '#f2f2f2', onBtn: '#0a0a0a',
     glow: 0, radius: 6, cover: 4, particle: 'dot',
+
+    particle: 'streak',
   },
   ambient: {
     name: 'Ambient', sub: 'Атмосферный минимализм', fx: 'ambient', blur: true,
@@ -115,6 +127,8 @@ export const STYLES = {
     accent: '#c08bff', btn: '#ecebf0', onBtn: '#0d0e12',
     glow: 0.7, radius: 18, cover: 22, particle: 'dot',
     preview: 'radial-gradient(45% 60% at 25% 35%, #c08bff66, transparent 70%), radial-gradient(45% 60% at 75% 65%, #ff9a7a55, transparent 70%), radial-gradient(40% 50% at 70% 15%, #6fd3ff44, transparent 70%), #0d0e12',
+
+    scene: 'lava',
   },
   softdark: {
     name: 'Soft Dark', sub: 'Мягкая тёмная', borders: true,
@@ -122,6 +136,8 @@ export const STYLES = {
     surface: '#26272b', strong: '#232428', line: '#34363b',
     accent: '#8ab4f8', btn: '#dcdde0', onBtn: '#1e1f22',
     glow: 0.12, radius: 10, cover: 12, particle: 'dot',
+
+    motif: 'fireflies', particle: 'firefly',
   },
   studio: {
     name: 'Studio', sub: 'Музыкальная студия', studio: true,
@@ -129,24 +145,27 @@ export const STYLES = {
     surface: '#1b1e22', strong: '#181a1e', line: '#2a2e34',
     accent: '#3ddc84', btn: '#e6e8eb', onBtn: '#141619',
     glow: 0.2, radius: 4, cover: 4, particle: 'square',
+
+    scene: 'cassette',
   },
   paper: {
-    name: 'Paper', sub: 'Бумажная эстетика', light: true, soften: 0.4, softenTo: '#8b5e3c',
-    bg: '#f5efe2', text: '#3a2e24', muted: '#6c5f51',
-    surface: '#fbf7ee', strong: 'rgba(251,247,238,0.97)', line: '#e2d8c6',
-    accent: '#8b5e3c', btn: '#3a2e24', onBtn: '#fbf7ee',
-    glow: 0.1, radius: 6, cover: 3, particle: 'dot',
+    name: 'Warm Paper', sub: 'Тёплая бумага', light: true, soften: 0.4, softenTo: '#b5532c',
+    bg: '#f4ece0', text: '#3b2a20', muted: '#7a6655',
+    surface: '#fbf6ec', strong: 'rgba(251,246,236,0.97)', line: '#e6d9c6',
+    accent: '#c4643a', btn: '#3b2a20', onBtn: '#fbf6ec',
+    glow: 0.12, radius: 8, cover: 4, particle: 'dot',
+    motif: 'dust',
   },
 
   // ---- Material You (MD3): тёмные темы, палитра строится по тональным уровням ----
-  amethyst: md3Style('Amethyst', 'Material You · сливовый', '#17131d', '#d0bcff', '#493b60'),
-  teal: md3Style('Deep Teal', 'Material You · бирюза', '#101a1a', '#80d5c8', '#294442'),
-  graphite: md3Style('Graphite', 'Material You · янтарь', '#171717', '#ffb86b', '#383838'),
-  midnight: md3Style('Midnight', 'Material You · индиго', '#111827', '#a8c7fa', '#293b58'),
-  burgundy: md3Style('Burgundy', 'Material You · вино', '#1d1418', '#f2b8c6', '#57333f'),
-  forest: md3Style('Forest', 'Material You · хвоя', '#121a16', '#a8d5b5', '#34483b'),
-  obsidian: md3Style('Obsidian', 'Material You · уголь', '#121212', '#d0d0d0', '#303030'),
-  copper: md3Style('Copper', 'Material You · медь', '#1c1714', '#e6b89c', '#654638'),
+  amethyst: { ...md3Style('Amethyst', 'Material You · кристаллы', '#17131d', '#d0bcff', '#493b60'), motif: 'crystals', particle: 'crystal' },
+  teal: { ...md3Style('Deep Teal', 'Material You · глубина', '#101a1a', '#80d5c8', '#294442'), motif: 'bubbles', particle: 'bubble' },
+  graphite: { ...md3Style('Graphite', 'Material You · графит и лайм', '#151617', '#c6f26b', '#3a412c'), particle: 'square', scene: 'led' },
+  midnight: { ...md3Style('Midnight Blue', 'Material You · лунный свет', '#0b1220', '#9ecbff', '#1f3a5f'), motif: 'frost', particle: 'frost' },
+  burgundy: { ...md3Style('Burgundy', 'Material You · вино и бархат', '#1d1418', '#f2b8c6', '#57333f'), motif: 'drops', particle: 'drop' },
+  forest: { ...md3Style('Sage', 'Material You · шалфей', '#141a16', '#b2cba8', '#3d4f3e'), motif: 'pollen', particle: 'pollen' },
+  obsidian: { ...md3Style('Obsidian', 'Material You · затмение', '#0e0e10', '#e6e1d6', '#303030'), motif: 'eclipse', particle: 'spark', eclipse: true },
+  copper: { ...md3Style('Copper', 'Material You · угли', '#1c1714', '#e6b89c', '#654638'), motif: 'embers', particle: 'ember' },
   youcustom: { ...md3Style('Material You', 'Свой цвет → вся палитра', '#141218', '#d0bcff', '#4f378b'), custom: true },
 };
 
