@@ -103,6 +103,33 @@ async function scenario(name, fn, { init } = {}) {
 
 console.log('Glow — сквозные тесты');
 
+// GLOW_LOOKS=1: только снимки всех стилей (медиатека и экран плеера) в tests/e2e/shots/looks.
+if (process.env.GLOW_LOOKS) {
+  const dir = path.join(shots, 'looks');
+  fs.mkdirSync(dir, { recursive: true });
+  const only = process.env.GLOW_LOOKS === '1' ? null : process.env.GLOW_LOOKS.split(',');
+  const pg0 = await page();
+  await pg0.click('#sidebar [data-view="settings"]');
+  const all = await pg0.$$eval('[data-style]', (els) => [...new Set(els.map((e) => e.dataset.style))]);
+  await pg0.context().close();
+  for (const s of all.filter((x) => !only || only.includes(x))) {
+    const pg = await page(`sessionStorage.setItem('mockFiles', JSON.stringify({ settings: JSON.stringify({ style: '${s}' }) }));`);
+    await pg.click('#sidebar [data-view="albums"]');
+    await sleep(500);
+    await pg.screenshot({ path: path.join(dir, `${s}-lib.png`) });
+    await pg.click('#sidebar [data-view="tracks"]').catch(() => {});
+    await pg.dblclick('.row[data-i="2"]');
+    await sleep(300);
+    await pg.keyboard.press('n');
+    await sleep(1800);
+    await pg.screenshot({ path: path.join(dir, `${s}-now.png`) });
+    if (pg.errors.length) console.log(s, pg.errors);
+    await pg.context().close();
+    console.log('  ' + s);
+  }
+  await browser.close(); server.close(); process.exit(0);
+}
+
 await scenario('медиатека загружается, трек играет', async (pg) => {
   check(await pg.$$eval('.row', (r) => r.length) > 5, 'нет строк в списке треков');
   await pg.dblclick('.row[data-i="0"]');
@@ -410,6 +437,33 @@ await scenario('сцены экрана плеера', async (pg) => {
     check(await pg.$eval('#now', (n, k) => n.classList.contains('has-scene') && n.dataset.scene === k, sc), `сцена ${sc} не включилась`);
     await pg.screenshot({ path: path.join(shots, `scene-${sc}.png`) });
   }
+});
+
+await scenario('стиль сам включает свою сцену', async (pg) => {
+  await pg.dblclick('.row[data-i="1"]');
+  await sleep(300);
+  for (const [style, sc] of [['premium', 'vinyl'], ['studio', 'cassette'], ['space', 'planet'], ['aura', 'none'], ['graphite', 'led']]) {
+    await pg.keyboard.press('Escape');
+    await pg.click('#sidebar [data-view="settings"]');
+    await pg.click(`[data-style="${style}"]`);
+    await sleep(150);
+    await pg.keyboard.press('n');
+    await sleep(500);
+    const got = await pg.$eval('#now', (n) => (n.classList.contains('has-scene') ? n.dataset.scene : 'none'));
+    check(got === sc, `${style}: сцена ${got}, ждали ${sc}`);
+  }
+});
+
+await scenario('облик у стилей разный', async (pg) => {
+  await pg.click('#sidebar [data-view="settings"]');
+  const styles = await pg.$$eval('[data-style]', (els) => [...new Set(els.map((e) => e.dataset.style))]);
+  const looks = new Set();
+  for (const s of styles) {
+    await pg.click(`[data-style="${s}"]`);
+    await sleep(30);
+    looks.add(await pg.evaluate(() => { const d = document.body.dataset; return [d.layout, d.cover, d.lib, d.play, getComputedStyle(document.body).getPropertyValue('--font-display')].join('|'); }));
+  }
+  check(looks.size >= styles.length - 1, `уникальных обликов ${looks.size} на ${styles.length} стилей`);
 });
 
 await scenario('подписи стилей', async (pg) => {

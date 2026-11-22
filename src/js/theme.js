@@ -169,6 +169,51 @@ export const STYLES = {
   youcustom: { ...md3Style('Material You', 'Свой цвет → вся палитра', '#141218', '#d0bcff', '#4f378b'), custom: true },
 };
 
+/**
+ * Облик стиля: раскладка экрана плеера, форма обложек, вид медиатеки, шрифт, кнопки и панель.
+ * layout: split | center | stage | cinema | magazine | deck
+ * cover: soft | circle | tilt | stack | frame | polaroid | reflect | backing | neon | gem | arch | flower | cookie | leaf | squircle
+ * lib: grid | cards | poster | list | shelf
+ * rows: soft | lines | zebra | pills;  play: circle | squircle | square | ring | fab | hex;  bar: full | float | flat
+ */
+export const BASE_LOOK = { layout: 'split', cover: 'soft', lib: 'grid', rows: 'soft', play: 'circle', bar: 'full', font: 'system', weight: 700, upper: false, track: -0.01 };
+export const LOOKS = {
+  aura: { layout: 'split', cover: 'soft', lib: 'grid', play: 'circle', weight: 800 },
+  dynamic: { layout: 'center', cover: 'soft', lib: 'poster', play: 'squircle', bar: 'float', weight: 800, track: -0.03 },
+  premium: { layout: 'stage', cover: 'frame', lib: 'shelf', rows: 'lines', play: 'ring', font: 'georgia', weight: 400, track: 0.02 },
+  light: { layout: 'split', cover: 'reflect', lib: 'cards', play: 'circle', bar: 'float', weight: 700 },
+  swiss: { layout: 'magazine', cover: 'backing', lib: 'list', rows: 'lines', play: 'square', bar: 'flat', font: 'helvetica', weight: 800, upper: true, track: -0.035 },
+  glass: { layout: 'center', cover: 'tilt', lib: 'poster', play: 'circle', bar: 'float', weight: 600 },
+  holo: { layout: 'center', cover: 'stack', lib: 'cards', play: 'squircle', bar: 'float', font: 'rounded', weight: 700 },
+  mglass: { layout: 'split', cover: 'squircle', lib: 'cards', rows: 'pills', play: 'fab', bar: 'float', font: 'rounded', weight: 600 },
+  aurora: { layout: 'cinema', cover: 'soft', lib: 'poster', play: 'circle', weight: 300, track: -0.02 },
+  noir: { layout: 'cinema', cover: 'neon', lib: 'list', rows: 'lines', play: 'ring', bar: 'flat', font: 'bahnschrift', weight: 700, upper: true, track: 0.04 },
+  space: { layout: 'stage', cover: 'circle', lib: 'grid', play: 'ring', font: 'bahnschrift', weight: 300, upper: true, track: 0.14 },
+  soft: { layout: 'center', cover: 'soft', lib: 'cards', rows: 'pills', play: 'fab', bar: 'float', font: 'rounded', weight: 600 },
+  nordic: { layout: 'magazine', cover: 'frame', lib: 'grid', rows: 'lines', play: 'square', bar: 'flat', weight: 300, track: -0.01 },
+  fluent: { layout: 'split', cover: 'reflect', lib: 'cards', play: 'circle', weight: 600 },
+  mono: { layout: 'magazine', cover: 'backing', lib: 'list', rows: 'lines', play: 'square', bar: 'flat', font: 'mono', weight: 600, upper: true, track: 0 },
+  ambient: { layout: 'stage', cover: 'circle', lib: 'poster', play: 'circle', bar: 'float', weight: 300, track: 0 },
+  softdark: { layout: 'split', cover: 'stack', lib: 'cards', play: 'squircle', font: 'rounded', weight: 600 },
+  studio: { layout: 'deck', cover: 'soft', lib: 'list', rows: 'zebra', play: 'square', bar: 'flat', font: 'mono', weight: 600, track: -0.01 },
+  paper: { layout: 'magazine', cover: 'polaroid', lib: 'shelf', rows: 'lines', play: 'circle', bar: 'flat', font: 'georgia', weight: 400, track: -0.01 },
+  amethyst: { layout: 'center', cover: 'gem', lib: 'grid', rows: 'pills', play: 'fab', font: 'rounded', weight: 500 },
+  teal: { layout: 'split', cover: 'circle', lib: 'cards', rows: 'pills', play: 'fab', bar: 'float', font: 'rounded', weight: 500 },
+  graphite: { layout: 'stage', cover: 'soft', lib: 'list', rows: 'zebra', play: 'hex', bar: 'flat', font: 'bahnschrift', weight: 600, upper: true, track: 0.03 },
+  midnight: { layout: 'center', cover: 'arch', lib: 'grid', rows: 'pills', play: 'fab', font: 'rounded', weight: 400 },
+  burgundy: { layout: 'split', cover: 'flower', lib: 'grid', rows: 'pills', play: 'fab', font: 'georgia', weight: 400 },
+  forest: { layout: 'magazine', cover: 'leaf', lib: 'cards', rows: 'pills', play: 'fab', font: 'rounded', weight: 500 },
+  obsidian: { layout: 'stage', cover: 'circle', lib: 'grid', rows: 'lines', play: 'ring', font: 'georgia', weight: 400, upper: true, track: 0.12 },
+  copper: { layout: 'cinema', cover: 'cookie', lib: 'poster', rows: 'pills', play: 'fab', font: 'georgia', weight: 500 },
+  youcustom: { layout: 'split', cover: 'squircle', lib: 'grid', rows: 'pills', play: 'fab', font: 'rounded', weight: 500 },
+};
+
+/** Облик стиля (свой стиль наследует облик своей основы). */
+export function lookOf(id) {
+  const st = STYLES[id] || {};
+  return { ...BASE_LOOK, ...(LOOKS[id] || (st.base && LOOKS[st.base]) || {}), ...(st.look || {}) };
+}
+
 export const FONT_STACKS = {
   system: '"Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif',
   helvetica: '"Helvetica Neue", Arial, "Segoe UI", sans-serif',
@@ -608,7 +653,10 @@ export function applyTheme(settings, palette) {
   b.toggle('light', isLight);
   b.toggle('holo-style', !!st.holoStyle);
   b.toggle('liquid', !!st.liquid);
-  b.toggle('float-bar', !!st.floatBar);
+  const lk = lookOf(settings.style);
+  const ds = document.body.dataset;
+  for (const k of ['layout', 'cover', 'lib', 'rows', 'play', 'bar']) ds[k] = lk[k];
+  b.toggle('float-bar', !!st.floatBar || lk.bar === 'float');
   b.toggle('lens', !!st.liquid && !!settings.glassLens);
   b.toggle('glass', !!st.glass);
   b.toggle('square', st.radius === 0);
@@ -634,8 +682,11 @@ export function applyTheme(settings, palette) {
     bs.setProperty('--dw', String(st.weight || 700));
     bs.setProperty('--dt', st.upper ? 'uppercase' : 'none');
   } else {
-    bs.removeProperty('--font-display'); bs.removeProperty('--dw'); bs.removeProperty('--dt');
+    bs.setProperty('--font-display', FONT_STACKS[lk.font] || FONT_STACKS.system);
+    bs.setProperty('--dw', String(lk.weight));
+    bs.setProperty('--dt', lk.upper ? 'uppercase' : 'none');
   }
+  bs.setProperty('--dls', `${lk.track}em`);
   let css = document.getElementById('user-css');
   if (!css) { css = document.createElement('style'); css.id = 'user-css'; document.head.appendChild(css); }
   css.textContent = st.user ? st.css || '' : '';

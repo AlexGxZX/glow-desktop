@@ -18,6 +18,7 @@ export async function refreshTheme() {
   const t = curTrack();
   const url = t && t.cover ? fileSrc(t.cover) : null;
   const req = ++themeReq;
+  syncScene();
   const pal = url ? await extractPalette(url) : null;
   if (req !== themeReq) return;
   S.palette = pal;
@@ -38,6 +39,21 @@ export function sceneTrack() {
   visuals.scenes.setTrack(t, t && t.cover ? fileSrc(t.cover) : null, al ? al.tracks : []);
 }
 
+/** Сцена: своя у стиля (у своего стиля — у его основы) или выбранная в настройках. */
+export function syncScene() {
+  const v = vis();
+  const st = STYLES[settings.style] || {};
+  const own = st.scene || (st.base && STYLES[st.base] && STYLES[st.base].scene);
+  const scene = v.scene && v.scene !== 'auto' ? v.scene : settings.scene && settings.scene !== 'auto' ? settings.scene : own || 'none';
+  const was = visuals.scenes.kind;
+  visuals.scenes.set(scene);
+  const now = $('#now');
+  now.classList.toggle('has-scene', visuals.scenes.active);
+  now.dataset.scene = visuals.scenes.kind;
+  if (was !== visuals.scenes.kind) visuals.scenes.imgSrc = undefined;
+  sceneTrack();
+}
+
 export function applyVisualSettings() {
   const v = vis();
   visuals.setMode(v.backdrop);
@@ -46,13 +62,7 @@ export function applyVisualSettings() {
   visuals.animations = settings.animations;
   const now = $('#now');
   now.classList.toggle('mode-blur', v.backdrop === 'blur');
-  // Сцена: своя у стиля или выбранная в настройках.
-  const st = STYLES[settings.style] || {};
-  const scene = v.scene && v.scene !== 'auto' ? v.scene : settings.scene && settings.scene !== 'auto' ? settings.scene : st.scene || 'none';
-  visuals.scenes.set(scene);
-  now.classList.toggle('has-scene', visuals.scenes.active);
-  now.dataset.scene = visuals.scenes.kind;
-  sceneTrack();
+  syncScene();
   const c = $('#now-cover');
   for (const m of Object.keys(MOTIONS)) c.classList.toggle(`motion-${m}`, v.motion === m);
   c.style.setProperty('--pulse', 0);

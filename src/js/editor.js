@@ -187,7 +187,7 @@ export function styleToLayers(id, settings) {
 export function customToStyle(c) {
   const L = c.layers;
   return {
-    user: true, layers: c.layers, name: c.name, sub: 'Свой стиль',
+    user: true, layers: c.layers, name: c.name, sub: 'Свой стиль', base: c.base, look: L.look,
     bg: L.theme.bg, text: L.theme.text, muted: L.theme.muted, surface: L.theme.surface,
     strong: L.theme.strong, line: L.theme.line, light: L.theme.light,
     accent: L.accent.color, accentSource: L.accent.source, btnMode: L.accent.btn,
@@ -262,7 +262,7 @@ export function createEditor(ctx) {
     applyRaf = requestAnimationFrame(() => {
       applyRaf = 0;
       if (!st) return;
-      STYLES.__edit = customToStyle({ name: st.name, layers: st.layers, css: st.css });
+      STYLES.__edit = customToStyle({ name: st.name, base: st.base, layers: st.layers, css: st.css });
       ctx.refreshTheme();
       // Экран плеера (фон, частицы) перезапускаем, только если менялся его слой, — иначе частицы дёргаются.
       const pl = JSON.stringify(st.layers.player);
