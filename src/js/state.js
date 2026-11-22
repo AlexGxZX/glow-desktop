@@ -26,7 +26,7 @@ export const DEFAULTS = {
   md3Variant: 'tonal', md3Mode: 'dark', glassBlur: 30, glassAlpha: 0.14, glassTint: false, glassLens: false,
   crossfade: 0, lyricsFolder: '', rgAuto: true, closeToTray: false, globalHotkeys: true, mediaKeys: false, watchFolders: true, autoUpdate: true, lang: 'auto', scene: 'auto',
   offline: false, onlineLyrics: true, lfmSession: '', lfmUser: '', lbToken: '', lbUser: '', discord: false, discordCover: true,
-  backdrop: 'glow', coverMotion: 'beat', particles: true, beatDelay: 0, nowSide: 'lyrics',
+  backdrop: 'glow', coverMotion: 'beat', particles: true, partPreset: 'style', quality: 'medium', visualProfiles: [], karaoke: true, todOn: false, todFrom: 22, todTo: 7, todStyle: 'aura', partCount: 1, beatSens: 0.3, coverStrength: 0.5, ringStrength: 0.5, nowBg: 'cover', beatDelay: 0, nowSide: 'lyrics',
   autoContinue: true, gapless: true, replayGain: 'track', rgPreamp: 0, resume: true,
   volume: 0.8, muted: false, sort: 'title',
   eq: { enabled: true, gains: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], preamp: 0, balance: 0, limiter: true, preset: 'flat' },

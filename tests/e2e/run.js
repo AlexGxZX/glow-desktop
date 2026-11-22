@@ -426,10 +426,10 @@ await scenario('английский интерфейс', async (pg) => {
 await scenario('сцены экрана плеера', async (pg) => {
   await pg.dblclick('.row[data-i="1"]');
   await sleep(300);
-  for (const sc of ['vinyl', 'cassette', 'led', 'lava', 'planet']) {
+  for (const sc of ['vinyl', 'cassette', 'led', 'lava', 'planet', 'spectrum', 'city']) {
     await pg.keyboard.press('Escape');
     await pg.click('#sidebar [data-view="settings"]');
-    await pg.click('[data-settab="player"]');
+    await pg.click('[data-settab="look"]');
     await pg.selectOption('[data-set="scene"]', sc);
     await sleep(100);
     await pg.keyboard.press('n');

@@ -1,12 +1,14 @@
 // Glow для ПК — ui.js (часть интерфейса, вынесена из main.js).
 
 import { I } from './icons.js';
-import { STYLES, applyTheme, extractPalette } from './theme.js';
+import { STYLES, applyTheme, extractPalette, mix } from './theme.js';
 import { MOTIONS } from './visuals.js';
 import { showMenu } from './dialogs.js';
 import { addToQueue, next, playNext, playTracks, startMeters } from './player.js';
 import { sel } from './settings.js';
 import { pinToSidebar } from './sidebar.js';
+import { QUALITY_PARTS } from './visuals.js';
+import { setLavaQuality } from './scenes.js';
 import { S, ambient, curTrack, engine, favs, meta, saveMeta, settings, track, vis, visuals } from './state.js';
 import { $, ROW, UNKNOWN_ARTIST, esc, fileSrc, fmt, fmtLong, invoke, toast, tracksWord } from './util.js';
 import { go, render } from './views.js';
@@ -23,12 +25,23 @@ export async function refreshTheme() {
   if (req !== themeReq) return;
   S.palette = pal;
   S.theme = applyTheme(settings, pal);
-  visuals.setTheme(S.theme);
+  visuals.setTheme(backgroundTheme(S.theme));
   ambient.set(S.theme.fx || (settings.styleMotifs !== false ? S.theme.motif : null), S.theme, settings.animations);
   startMeters();
   const bgUrl = url ? `url("${url}")` : 'none';
   $('#bg-art').style.backgroundImage = bgUrl;
-  $('#now-blur').style.backgroundImage = bgUrl;
+  $('#now-blur').style.backgroundImage = settings.nowBg === 'design' ? 'none' : bgUrl;
+}
+
+/**
+ * Фон открытой песни: по настройке «Фон открытой песни» берёт цвета дизайна стиля, а не обложки.
+ * Интерфейс (кнопки, прогресс) остаётся на цвете обложки — меняется только визуал.
+ */
+export function backgroundTheme(th) {
+  if (settings.nowBg !== 'design') return th;
+  const st = STYLES[settings.style] || STYLES.aura;
+  const accent = st.accent || th.accent;
+  return { ...th, accent, second: st.second || mix(accent, '#000000', 0.25) };
 }
 
 /** Сцене нужна обложка и треки альбома (луны у планеты). */
@@ -58,6 +71,12 @@ export function applyVisualSettings() {
   const v = vis();
   visuals.setMode(v.backdrop);
   visuals.particlesOn = v.particles;
+  visuals.preset = settings.partPreset || 'style';
+  visuals.partMul = (settings.partCount || 1) * (QUALITY_PARTS[settings.quality] || 1);
+  setLavaQuality(settings.quality || 'medium');
+  visuals.engine.setBeatSensitivity(settings.beatSens ?? 0.3);
+  visuals.coverStrength = settings.coverStrength ?? 0.5;
+  visuals.ringStrength = settings.ringStrength ?? 0.5;
   visuals.beatDelay = settings.beatDelay;
   visuals.animations = settings.animations;
   const now = $('#now');

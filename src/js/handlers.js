@@ -8,6 +8,7 @@ import { addFolder, scan, watchFolders } from './library.js';
 import { setMini } from './main.js';
 import { addToQueue, afterQueueChange, closeNow, cycleRepeat, loadLyrics, makeSlider, moveInQueue, next, openNow, playNext, playTracks, prev, removeFromQueue, renderNowRight, setRating, setSleep, setVolume, startCurrent, toggleFav, togglePlay, toggleQueue, toggleShuffle, updateButtons } from './player.js';
 import { afterSetting, importStyle, range, sel, setAppIcon, userStyleMenu } from './settings.js';
+import { applyProfile, exportProfile, importProfile, removeProfile, saveCurrent } from './vprofiles.js';
 import { addToPlaylist, bindSidebar, newPlaylist, pinToSidebar, renderPlaylists, saveSidebar, setNavMode, startNavEdit, toggleNav } from './sidebar.js';
 import { smartEditor } from './smart.js';
 import { checkUpdates } from './updates.js';
@@ -139,7 +140,7 @@ export function bindUi() {
     const key = r.dataset.range;
     settings[key] = parseFloat(r.value);
     const lbl = $(`[data-range-v="${key}"]`, content);
-    const fmtR = { glow: (v) => Math.round(v * 100) + '%', glassAlpha: (v) => Math.round(v * 100) + '%', glassBlur: (v) => v + ' px', crossfade: (v) => (v ? v + ' с' : 'выкл') };
+    const fmtR = { glow: (v) => Math.round(v * 100) + '%', glassAlpha: (v) => Math.round(v * 100) + '%', glassBlur: (v) => v + ' px', crossfade: (v) => (v ? v + ' с' : 'выкл'), partCount: (v) => Math.round(v * 100) + '%', beatSens: (v) => Math.round(v * 100) + '%', coverStrength: (v) => Math.round(v * 100) + '%', ringStrength: (v) => Math.round(v * 100) + '%' };
     if (lbl) lbl.textContent = fmtR[key] ? fmtR[key](settings[key]) : settings[key] + ' мс';
     afterSetting(key, false);
   });
@@ -361,6 +362,11 @@ export async function onContentClick(e) {
       case 'nav-edit': if (settings.sidebar.mode === 'hidden') settings.sidebar.mode = 'full'; startNavEdit(); break;
       case 'style-new': editor.open({ base: settings.style }); break;
       case 'style-import': importStyle(); break;
+      case 'vprof-apply': applyProfile(key); render($('#content').scrollTop); break;
+      case 'vprof-save': await saveCurrent(); render($('#content').scrollTop); break;
+      case 'vprof-import': await importProfile(); render($('#content').scrollTop); break;
+      case 'vprof-export': exportProfile(key); break;
+      case 'vprof-del': await removeProfile(key); render($('#content').scrollTop); break;
       case 'reveal-folder': {
         const f = S.folders.find((x) => x.path === key);
         if (f && f.tracks[0]) invoke('reveal', { path: f.tracks[0].path });

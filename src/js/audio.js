@@ -1,5 +1,6 @@
 // Звуковой движок Glow: два аудио-элемента (для перехода без пауз) → Web Audio:
 // ReplayGain → усиление → 10-полосный эквалайзер → баланс → лимитер → анализатор → громкость.
+import { binRanges, bandFluxDb, createOnsetDetector } from './beat.js';
 
 export const EQ_FREQS = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
 export const EQ_LABELS = ['31', '62', '125', '250', '500', '1K', '2K', '4K', '8K', '16K'];
@@ -100,6 +101,11 @@ export class Engine extends EventTarget {
     this.panner.connect(this.limiter);
     this.limiter.connect(this.analyser);
     this.analyser.connect(this.master);
+    // Отдельный анализатор для ударов: без сглаживания, так резкий удар виден сразу.
+    this.beatAnalyser = ctx.createAnalyser();
+    this.beatAnalyser.fftSize = 1024;
+    this.beatAnalyser.smoothingTimeConstant = 0;
+    this.limiter.connect(this.beatAnalyser);
     this.master.connect(ctx.destination);
 
     // Индикаторы уровня L/R для стиля Studio.
@@ -114,8 +120,9 @@ export class Engine extends EventTarget {
     this._spec = new Uint8Array(this.analyser.frequencyBinCount);
 
     this.freq = new Uint8Array(this.analyser.frequencyBinCount);
-    this._energy = 0;
-    this._lastBeat = 0;
+    this._prevDb = null;
+    this._db = new Float32Array(this.beatAnalyser.frequencyBinCount);
+    this._onsets = { all: createOnsetDetector(), bass: createOnsetDetector(), mid: createOnsetDetector(), high: createOnsetDetector() };
     this._applyPending();
   }
 
@@ -343,12 +350,20 @@ export class Engine extends EventTarget {
     const t = performance.now();
     if (this._lv && t - this._lvAt < 12) return this._lv;
     this._lvAt = t;
-    this._lv = this._levels();
+    try {
+      this._lv = this._levels();
+    } catch (err) {
+      console.warn('beat detector error', err);
+      this._lv = { bass: 0, mid: 0, high: 0, level: 0, beat: 0, bandBeat: { bass: 0, mid: 0, high: 0 } };
+    }
     return this._lv;
   }
 
   _levels() {
-    if (!this.ctx || !this.playing) return { bass: 0, mid: 0, high: 0, level: 0, beat: 0 };
+    if (!this.ctx || !this.playing) {
+      this._resetBeats();
+      return { bass: 0, mid: 0, high: 0, level: 0, beat: 0, bandBeat: { bass: 0, mid: 0, high: 0 } };
+    }
     this.analyser.getByteFrequencyData(this.freq);
     const binHz = this.ctx.sampleRate / this.analyser.fftSize;
     const avg = (a, b) => {
@@ -359,14 +374,28 @@ export class Engine extends EventTarget {
     };
     const bass = avg(35, 160), mid = avg(250, 2000), high = avg(4000, 12000);
     const level = bass * 0.5 + mid * 0.35 + high * 0.15;
+    // Удар: весь спектр 40 Гц – 12 кГц, плюс отдельно бас, средние и высокие для разных эффектов.
+    const [all, bassF, midF, highF] = binRanges([[40, 12000], [35, 160], [250, 2000], [4000, 12000]], binHz, this._db.length);
+    this.beatAnalyser.getFloatFrequencyData(this._db);
+    const flux = bandFluxDb(this._prevDb, this._db, [all, bassF, midF, highF]);
+    this._prevDb = this._prevDb || new Float32Array(this._db.length);
+    this._prevDb.set(this._db);
     const now = performance.now();
-    let beat = 0;
-    if (bass > this._energy * 1.22 && bass > 0.32 && now - this._lastBeat > 180) {
-      beat = Math.min(1, (bass - this._energy) * 3 + 0.35);
-      this._lastBeat = now;
-    }
-    this._energy = this._energy * 0.9 + bass * 0.1;
-    return { bass, mid, high, level, beat };
+    const o = this._onsets;
+    const beat = o.all.step(flux[0], now);
+    const bandBeat = { bass: o.bass.step(flux[1], now), mid: o.mid.step(flux[2], now), high: o.high.step(flux[3], now) };
+    return { bass, mid, high, level, beat, bandBeat };
+  }
+
+  _resetBeats() {
+    this._prevDb = null;
+    for (const k in this._onsets) this._onsets[k].reset();
+  }
+
+  /** Чувствительность ударов, 0…1: 0 — только сильные удары, 1 — почти любой всплеск. */
+  setBeatSensitivity(k) {
+    const ratio = 2 - Math.max(0, Math.min(1, k));
+    for (const key in this._onsets) this._onsets[key].setRatio(ratio);
   }
 
   /** Уровни L/R: RMS и пик, 0…1 по шкале от −48 до 0 дБFS. */

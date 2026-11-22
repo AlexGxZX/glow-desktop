@@ -2,6 +2,7 @@
 // и частицы в бит, которые вылетают из-за обложки.
 
 import { rgba, mix, HOLO_COLORS } from './theme.js';
+import { stepSpring } from './beat.js';
 import { Scenes } from './scenes.js';
 
 export const BACKDROPS = {
@@ -11,6 +12,29 @@ export const BACKDROPS = {
   lights: 'Световые пятна',
   waves: 'Жидкие волны',
   particles: 'Частицы',
+};
+
+// Качество графики: множитель количества частиц (детализация лавы — в scenes.js).
+export const QUALITIES = { low: 'Низкое', medium: 'Среднее', high: 'Высокое' };
+export const QUALITY_PARTS = { low: 0.5, medium: 1, high: 1.5 };
+
+// Пресеты частиц: форма и поведение. «Как в стиле» — прежние формы каждого стиля.
+export const PART_PRESETS = {
+  style: 'Как в стиле',
+  sparks: 'Искры',
+  dust: 'Пыль',
+  rings: 'Кольца',
+  orbits: 'Орбиты',
+  petals: 'Лепестки',
+  shards: 'Осколки',
+};
+const PRESET = {
+  sparks: { shape: 'streak', count: 1, speed: 1.4 },
+  dust: { shape: 'dot', count: 2.5, speed: 0.5, size: 0.5, life: 1.8 },
+  rings: { shape: 'rings', count: 0.25 },
+  orbits: { shape: 'orbits', count: 0.6, life: 2 },
+  petals: { shape: 'petals', count: 0.7, speed: 0.5, life: 1.4 },
+  shards: { shape: 'shards', count: 0.8, speed: 1.6, life: 0.9 },
 };
 
 export const MOTIONS = {
@@ -36,6 +60,22 @@ export class Visuals {
     this.beatQueue = [];
     this.particlesOn = true;
     this.animations = true;
+    this.preset = 'style';     // пресет формы частиц (настройка «Форма частиц»)
+    this.partMul = 1;          // множитель количества частиц (настройка «Количество частиц»)
+    this.dt = 1 / 60;          // реальный шаг кадра, частицы двигаются по времени, а не по кадрам
+    this._lastNow = null;
+    this._spawnAcc = 0;
+    // Реакция самой обложки: пружины для масштаба и поворота, вспышка яркости.
+    this.coverStrength = 0.5;
+    this.coverFx = { kick: 0, jr: 0, flash: 0 };
+    this._kick = { x: 0, v: 0 };
+    this._rot = { x: 0, v: 0 };
+    this._flash = 0;
+    // Реакция на вокал (средние частоты): мягкое свечение и кольца от обложки.
+    this.voice = 0;
+    this.rings = [];
+    this.ringStrength = 0.5;   // настройка «Сила колец на вокале», 0 — выключены
+    this._lastRingAt = -Infinity;
     this.anchor = () => ({ x: this.w / 2, y: this.h / 2, r: 160 });
     this.onPulse = () => {};
     this.t0 = performance.now();
@@ -69,37 +109,114 @@ export class Visuals {
   _loop(now) {
     if (!this.running) return;
     const t = (now - this.t0) / 1000;
+    this.dt = this._lastNow == null ? 1 / 60 : Math.min(0.05, (now - this._lastNow) / 1000);
+    this._lastNow = now;
     const lv = this.engine.levels();
     // Звук выходит из колонок чуть позже анализа (особенно по Bluetooth) — задерживаем вспышки.
-    if (lv.beat) this.beatQueue.push({ at: now + this.beatDelay, s: lv.beat });
-    while (this.beatQueue.length && this.beatQueue[0].at <= now) this._onBeat(this.beatQueue.shift().s);
-    this.pulse *= 0.9;
+    const bb = lv.bandBeat || {};
+    if (lv.beat || bb.bass || bb.mid || bb.high) this.beatQueue.push({ at: now + this.beatDelay, s: lv.beat || 0, bb });
+    while (this.beatQueue.length && this.beatQueue[0].at <= now) {
+      const q = this.beatQueue.shift();
+      this._onBeat(q.s, q.bb);
+    }
+    if (this.particlesOn && this.animations && this.theme && lv.level > 0.02) this._ambientSpawn(lv.level, this.dt);
+    this.pulse *= Math.pow(0.9, this.dt * 60);
+    this._coverStep(this.dt);
+    this._voiceStep(this.dt);
     this.onPulse(this.pulse, lv);
     this._draw(this.animations ? t : 0, lv);
     requestAnimationFrame(this._loop);
   }
 
-  _onBeat(s) {
+  _onBeat(s, bb = {}) {
     this.pulse = Math.min(1, this.pulse + s);
+    this._coverImpulse(s, bb);
+    if (bb.mid) {
+      this.voice = Math.min(1, this.voice + bb.mid * 0.8 * this.coverStrength * 2);
+      // Кольцо не чаще раза в 300 мс, иначе на каждую вокальную ноту они накладываются.
+      const now = performance.now();
+      if (this.particlesOn && this.animations && this.theme && this.ringStrength > 0 && now - this._lastRingAt >= 300) {
+        this.rings.push({ age: 0, max: 0.7 + bb.mid * 0.4, s: bb.mid, col: this.theme.second || this.theme.accent });
+        this._lastRingAt = now;
+      }
+    }
     if (!this.particlesOn || !this.animations || !this.theme) return;
     const a = this.anchor();
-    const n = Math.round(6 + s * 10);
-    for (let i = 0; i < n; i++) {
-      const ang = Math.random() * Math.PI * 2;
-      const sp = 70 + Math.random() * 190 * (0.6 + s);
-      this.parts.push({
-        x: a.x + Math.cos(ang) * a.r * 0.75,
-        y: a.y + Math.sin(ang) * a.r * 0.75,
-        vx: Math.cos(ang) * sp,
-        vy: Math.sin(ang) * sp,
-        life: 0,
-        max: 0.9 + Math.random() * 0.8,
-        size: 2 + Math.random() * 4.5,
-        rot: Math.random() * Math.PI,
-        col: Math.random() < 0.7 ? this.theme.accent : this.theme.second,
-      });
+    const m = this.partMul * ((PRESET[this.preset] || {}).count || 1);
+    // Удар по всему спектру — основной залп из-за обложки.
+    if (s > 0) {
+      const n = Math.round((10 + s * 26) * m);
+      for (let i = 0; i < n; i++) this._spawn(a, 140 + Math.random() * 320 * (0.6 + s), 0.9 + Math.random() * 0.8, 2 + Math.random() * 4.5);
     }
-    if (this.parts.length > 400) this.parts.splice(0, this.parts.length - 400);
+    // Высокие — мелкие искры поверх залпа.
+    if (bb.high) {
+      const n = Math.round((4 + bb.high * 10) * m);
+      for (let i = 0; i < n; i++) this._spawn(a, 60 + Math.random() * 120, 0.4 + Math.random() * 0.5, 1 + Math.random() * 1.5);
+    }
+    this._cap();
+  }
+
+  /** Постоянный поток частиц, пока звучит музыка: плотность зависит от громкости. */
+  _ambientSpawn(level, dt) {
+    this._spawnAcc += (6 + level * 40) * this.partMul * ((PRESET[this.preset] || {}).count || 1) * dt;
+    const a = this.anchor();
+    while (this._spawnAcc >= 1) {
+      this._spawnAcc -= 1;
+      this._spawn(a, 20 + Math.random() * 50, 1 + Math.random() * 1, 1.5 + Math.random() * 2);
+    }
+    this._cap();
+  }
+
+  _spawn(a, speed, max, size) {
+    const ang = Math.random() * Math.PI * 2;
+    const P = PRESET[this.preset] || {};
+    const p = {
+      x: a.x + Math.cos(ang) * a.r * 0.75,
+      y: a.y + Math.sin(ang) * a.r * 0.75,
+      vx: Math.cos(ang) * speed * (P.speed || 1),
+      vy: Math.sin(ang) * speed * (P.speed || 1),
+      life: 0,
+      max: max * (P.life || 1),
+      size: size * (P.size || 1),
+      rot: Math.random() * Math.PI,
+      col: Math.random() < 0.7 ? this.theme.accent : this.theme.second,
+      shape: P.shape || null,
+    };
+    // Орбиты крутятся вокруг обложки, кольца расходятся от неё.
+    if (P.shape === 'orbits') {
+      Object.assign(p, { ox: a.x, oy: a.y, orb: a.r * (1.05 + Math.random() * 0.5), ang, w: (Math.random() < 0.5 ? -1 : 1) * (0.8 + Math.random() * 1.6) });
+    } else if (P.shape === 'rings') {
+      Object.assign(p, { ox: a.x, oy: a.y, orb: a.r * 0.8, w: 90 + Math.random() * 120, vx: 0, vy: 0 });
+    }
+    this.parts.push(p);
+  }
+
+  /** Удар баса толкает обложку, высокие дают поворот, полный удар даёт вспышку яркости. */
+  _coverImpulse(s, bb) {
+    const g = this.coverStrength;
+    if (bb.bass) this._kick.v += bb.bass * 6.4 * g;
+    if (bb.high) this._rot.v += bb.high * 120 * g;
+    if (s) this._flash = Math.min(1, this._flash + s * g * 1.2);
+  }
+
+  _voiceStep(dt) {
+    this.voice *= Math.pow(0.92, dt * 60);
+    for (const r of this.rings) r.age += dt;
+    this.rings = this.rings.filter((r) => r.age < r.max);
+  }
+
+  _coverStep(dt) {
+    stepSpring(this._kick, 260, 16, dt);
+    stepSpring(this._rot, 400, 20, dt);
+    this._flash *= Math.pow(0.85, dt * 60);
+    this.coverFx.kick = Math.max(-0.05, Math.min(0.25, this._kick.x));
+    this.coverFx.jr = Math.max(-4, Math.min(4, this._rot.x));
+    this.coverFx.flash = this._flash;
+  }
+
+  _cap() {
+    const limit = Math.round(400 * Math.max(1, this.partMul));
+    if (this.parts.length > limit) this.parts.splice(0, this.parts.length - limit);
   }
 
   _draw(t, lv) {
@@ -242,7 +359,7 @@ export class Visuals {
 
     // Свечение от обложки есть почти во всех режимах; в «Размытой обложке» оно мягче.
     if (this.mode !== 'gradient') {
-      const r = a.r * (1.9 + this.pulse * 0.35 + level * 0.2);
+      const r = a.r * (1.9 + this.pulse * 0.35 + level * 0.2 + this.voice * 0.15);
       const g = cx.createRadialGradient(a.x, a.y, a.r * 0.2, a.x, a.y, r);
       const k = (this.mode === 'blur' ? 0.35 : 0.6) * glow;
       g.addColorStop(0, rgba(acc, Math.min(0.85, k)));
@@ -258,15 +375,37 @@ export class Visuals {
       this.scenes.draw(cx, a, th, lv, { playing: e.playing, time: e.time || 0, duration: e.duration || 0, spectrum: e.spectrum(32) }, this.animations ? t : 0);
     }
 
+    // Кольца на вокале: расходятся от обложки и гаснут.
+    if (this.rings.length) {
+      cx.save();
+      for (const r of this.rings) {
+        const k = 1 - r.age / r.max;
+        if (k <= 0) continue;
+        const rad = a.r * (1.03 + (1 - k) * (0.4 + r.s * 0.4));
+        cx.globalAlpha = k * 0.6 * Math.min(1, this.ringStrength * 2);
+        cx.strokeStyle = r.col;
+        cx.lineWidth = 1 + 2.5 * k;
+        cx.beginPath(); cx.arc(a.x, a.y, rad, 0, Math.PI * 2); cx.stroke();
+      }
+      cx.restore();
+    }
+
     // Частицы в бит.
     if (this.parts.length) {
-      const dt = 1 / 60;
-      const shape = th.particle || 'dot';
+      const dt = this.dt;
+      const damp = Math.pow(0.985, dt * 60);
       for (const p of this.parts) {
-        p.life += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.985; p.vy *= 0.985; p.rot += dt * 2;
+        p.life += dt; p.rot += dt * 2;
+        if (p.shape === 'orbits') {
+          p.ang += p.w * dt;
+          p.x = p.ox + Math.cos(p.ang) * p.orb; p.y = p.oy + Math.sin(p.ang) * p.orb;
+        } else if (p.shape !== 'rings') {
+          p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= damp; p.vy *= damp;
+        }
         const k = 1 - p.life / p.max;
         if (k <= 0) continue;
         cx.globalAlpha = k * 0.9;
+        const shape = p.shape || th.particle || 'dot';
         if (shape === 'square') {
           cx.fillStyle = p.col;
           cx.save(); cx.translate(p.x, p.y); cx.rotate(p.rot);
@@ -284,6 +423,20 @@ export class Visuals {
           cx.beginPath(); cx.moveTo(p.x - lx, p.y - ly); cx.lineTo(p.x, p.y); cx.stroke();
           cx.strokeStyle = '#ffffff'; cx.lineWidth = Math.max(1, p.size * 0.4);
           cx.beginPath(); cx.moveTo(p.x - lx * 0.6, p.y - ly * 0.6); cx.lineTo(p.x, p.y); cx.stroke();
+        } else if (shape === 'rings') {
+          // Кольцо расходится от обложки и гаснет.
+          cx.strokeStyle = rgba(p.col, 0.9); cx.lineWidth = 1.5;
+          cx.beginPath(); cx.arc(p.ox, p.oy, p.orb + p.life * p.w, 0, Math.PI * 2); cx.stroke();
+        } else if (shape === 'petals') {
+          cx.fillStyle = p.col;
+          cx.save(); cx.translate(p.x, p.y); cx.rotate(p.rot);
+          cx.beginPath(); cx.ellipse(0, 0, p.size * 1.8, p.size * 0.9, 0, 0, Math.PI * 2); cx.fill();
+          cx.restore();
+        } else if (shape === 'shards') {
+          cx.fillStyle = p.col;
+          cx.save(); cx.translate(p.x, p.y); cx.rotate(p.rot * 2);
+          cx.beginPath(); cx.moveTo(-p.size * 1.5, -p.size); cx.lineTo(p.size * 1.5, 0); cx.lineTo(-p.size * 0.5, p.size * 1.4); cx.closePath(); cx.fill();
+          cx.restore();
         } else if (shape === 'star') {
           // Deep Space: звёздочки с лучами.
           const r = p.size * 0.9;

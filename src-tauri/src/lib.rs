@@ -1041,6 +1041,40 @@ async fn pick_theme(app: AppHandle) -> Option<String> {
         .map(|p| p.to_string())
 }
 
+/// Сохранить профиль визуала (.glowvis).
+#[tauri::command]
+async fn save_profile(app: AppHandle, name: String, content: String) -> Result<bool, String> {
+    let safe: String = name
+        .chars()
+        .map(|c| if r#"\/:*?"<>|"#.contains(c) { '_' } else { c })
+        .collect();
+    let picked = app
+        .dialog()
+        .file()
+        .add_filter(desktop::l("Профиль визуала Glow", "Glow visual profile"), &["glowvis"])
+        .set_file_name(&safe)
+        .blocking_save_file();
+    let Some(fp) = picked else {
+        return Ok(false);
+    };
+    let path = fp.into_path().map_err(|e| e.to_string())?;
+    fs::write(&path, content).map_err(|e| e.to_string())?;
+    Ok(true)
+}
+
+/// Выбрать файл профиля визуала для импорта.
+#[tauri::command]
+async fn pick_profile(app: AppHandle) -> Option<String> {
+    app.dialog()
+        .file()
+        .add_filter(
+            desktop::l("Профиль визуала Glow", "Glow visual profile"),
+            &["glowvis", "json"],
+        )
+        .blocking_pick_file()
+        .map(|p| p.to_string())
+}
+
 /// Открыть папку с файлом и выделить его.
 #[tauri::command]
 fn reveal(path: String) {
@@ -1253,6 +1287,8 @@ pub fn run() {
             set_app_icon,
             save_theme,
             pick_theme,
+            pick_profile,
+            save_profile,
             pick_image,
             write_tags,
             pick_cover,

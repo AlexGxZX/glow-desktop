@@ -11,11 +11,20 @@ export const SCENES = {
   led: 'Светодиодная матрица',
   lava: 'Жидкий свет',
   planet: 'Светящаяся планета',
+  spectrum: 'Спектр',
+  city: 'Ночной город',
 };
 
 const TAU = Math.PI * 2;
+// Детерминированный «шум» для домов и окон: одинаковый на каждом кадре.
+const hash = (a, b) => { const x = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return x - Math.floor(x); };
 const ease = (a, b, k) => a + (b - a) * k;
 const rnd = (a, b) => a + Math.random() * (b - a);
+
+// Качество жидкого света: разрешение поля и число капель (шейдер всегда считает до 7).
+const LAVA_Q = { low: { res: 128, balls: 4 }, medium: { res: 256, balls: 7 }, high: { res: 384, balls: 7 } };
+let lavaQ = LAVA_Q.medium;
+export function setLavaQuality(q) { lavaQ = LAVA_Q[q] || LAVA_Q.medium; }
 
 export class Scenes {
   constructor() {
@@ -87,8 +96,10 @@ export class Scenes {
       case 'vinyl': this._vinyl(cx, a, acc, sec, level, beat, st, dt, t); break;
       case 'cassette': this._cassette(cx, a, acc, sec, level, beat, st, dt, t, th); break;
       case 'led': this._led(cx, a, acc, sec, level, beat, st, dt, t); break;
-      case 'lava': this._lava(cx, a, acc, sec, level, beat, st, dt, t); break;
+      case 'lava': this._lava(cx, a, acc, sec, level, beat, st, dt, t, lv.bandBeat || {}); break;
       case 'planet': this._planet(cx, a, acc, sec, level, beat, st, dt, t); break;
+      case 'spectrum': this._spectrum(cx, a, acc, sec, st, dt); break;
+      case 'city': this._city(cx, a, acc, sec, level, beat, st, dt, t); break;
       default: break;
     }
     cx.restore();
@@ -362,6 +373,82 @@ export class Scenes {
 
   // ---------- Светодиодная матрица ----------
 
+  // Ночной город: силуэты домов, окна мигают медленно, на ударах вспыхивают; внизу бегут огни машин.
+  _city(cx, a, acc, sec, level, beat, st, dt, t) {
+    const S = a.r * 1.72;
+    const x0 = a.x - S / 2, y0 = a.y - a.r, bottom = y0 + S;
+    if (!this.cityB) {
+      this.cityB = [];
+      let x = 0, k = 0;
+      while (x < 1) {
+        this.cityB.push({ x, w: 0.07 + hash(k, 1) * 0.1, h: 0.25 + hash(k, 2) * 0.6, k });
+        x += 0.08 + hash(k, 1) * 0.1; k++;
+      }
+    }
+    const g = cx.createLinearGradient(0, y0, 0, bottom);
+    g.addColorStop(0, mix(acc, '#000000', 0.82));
+    g.addColorStop(1, mix(sec, '#000000', 0.55));
+    cx.fillStyle = g;
+    roundRect(cx, x0, y0, S, S, S * 0.04); cx.fill();
+    // Луна с мягким свечением.
+    const mr = S * 0.09, mx = x0 + S * 0.8, my = y0 + S * 0.2;
+    const mg = cx.createRadialGradient(mx, my, mr * 0.5, mx, my, mr * 3);
+    mg.addColorStop(0, rgba(sec, 0.5)); mg.addColorStop(1, rgba(sec, 0));
+    cx.fillStyle = mg; cx.beginPath(); cx.arc(mx, my, mr * 3, 0, TAU); cx.fill();
+    cx.fillStyle = mix(sec, '#ffffff', 0.5); cx.beginPath(); cx.arc(mx, my, mr, 0, TAU); cx.fill();
+    // Дома и окна.
+    const slow = Math.floor(t * 0.25);
+    for (const b of this.cityB) {
+      const bx = x0 + b.x * S, bw = b.w * S, bh = b.h * S * 0.85;
+      cx.fillStyle = '#05050b';
+      cx.fillRect(bx, bottom - bh, bw, bh);
+      const cols = Math.max(2, Math.floor(bw / 6)), rows = Math.max(2, Math.floor(bh / 9));
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const id = r * 13 + c;
+          const seed = hash(b.k * 97 + id, 3);
+          const lit = hash(b.k * 31 + id, slow) < 0.3 + level * 0.35 || (beat > 0.5 && seed < beat * 0.6);
+          if (!lit) continue;
+          cx.fillStyle = mix(acc, sec, seed);
+          cx.globalAlpha = 0.45 + beat * 0.35;
+          cx.fillRect(bx + 2 + c * ((bw - 4) / cols), bottom - bh + 3 + r * 9, Math.max(1.5, (bw - 4) / cols - 2.5), 3.5);
+        }
+      }
+    }
+    cx.globalAlpha = 1;
+    // Огни машин внизу: бегут быстрее на громких местах.
+    for (let i = 0; i < 8; i++) {
+      const p = ((i * 0.137 + t * 0.06 * (1 + level)) % 1 + 1) % 1;
+      cx.fillStyle = i % 2 ? sec : acc;
+      cx.globalAlpha = 0.85;
+      cx.fillRect(x0 + p * S, bottom - 5 - (i % 3) * 3, 6, 1.5);
+    }
+    cx.globalAlpha = 1;
+  }
+
+  // Спектр: 32 полосы в квадрате обложки, сверху падают пики.
+  _spectrum(cx, a, acc, sec, st, dt) {
+    const N = 32;
+    const S = a.r * 1.72;
+    const x0 = a.x - S / 2, y0 = a.y - a.r;
+    const bw = S / N;
+    const sp = st.spectrum || [];
+    if (!this.specPeaks) this.specPeaks = new Float32Array(N);
+    cx.fillStyle = '#060608';
+    roundRect(cx, x0 - bw, y0 - bw, S + bw * 2, S + bw * 2, bw * 1.2); cx.fill();
+    for (let i = 0; i < N; i++) {
+      const v = Math.min(1, Math.pow(sp[i] || 0, 1.2));
+      this.specPeaks[i] = v > this.specPeaks[i] ? v : Math.max(0, this.specPeaks[i] - dt * 0.6);
+      const x = x0 + i * bw + 1;
+      cx.fillStyle = mix(acc, sec, i / (N - 1));
+      cx.globalAlpha = 0.85;
+      cx.fillRect(x, y0 + S - v * S, bw - 2, v * S);
+      cx.globalAlpha = 1;
+      cx.fillStyle = '#ffffff';
+      cx.fillRect(x, y0 + S - this.specPeaks[i] * S - 3, bw - 2, 2);
+    }
+  }
+
   _led(cx, a, acc, sec, level, beat, st, dt, t) {
     const N = 32;
     const S = a.r * 1.72;
@@ -425,13 +512,80 @@ export class Scenes {
 
   // ---------- Жидкий свет ----------
 
-  _lava(cx, a, acc, sec, level, beat, st, dt, t) {
+  /** Создаёт WebGL-холст для жидкого света. Без WebGL остаётся пустой холст (пункт тихо скрыт). */
+  _lavaInit() {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = lavaQ.res;
+    this.lavaCv = cv;
+    this.lavaGl = null;
+    const gl = cv.getContext('webgl', { alpha: true, premultipliedAlpha: true, preserveDrawingBuffer: true });
+    if (!gl) return;
+    const VS = 'attribute vec2 p; varying vec2 v; void main() { v = vec2(p.x * 0.5 + 0.5, 0.5 - p.y * 0.5); gl_Position = vec4(p, 0.0, 1.0); }';
+    const FS = `precision mediump float;
+uniform vec4 u_balls[7];
+uniform vec3 u_ca;
+uniform vec3 u_cb;
+varying vec2 v;
+void main() {
+  float f = 0.0;
+  float fa = 0.0;
+  for (int i = 0; i < 7; i++) {
+    vec4 b = u_balls[i];
+    vec2 d = v - b.xy;
+    float q = (b.z * b.z) / (dot(d, d) + 0.0001);
+    f += q;
+    if (b.w < 0.5) fa += q;
+  }
+  float mixk = fa / max(f, 0.0001);
+  float alpha = f > 1.0 ? 0.85 : pow(max(0.0, (f - 0.5) / 0.5), 2.0) * 0.6;
+  float core = f > 1.0 ? min(1.0, (f - 1.0) * 0.35) * (45.0 / 255.0) : 0.0;
+  vec3 col = u_ca * mixk + u_cb * (1.0 - mixk) + core;
+  // Field fades to zero toward the edges, so no square is visible.
+  alpha *= 1.0 - smoothstep(0.3, 0.5, length(v - vec2(0.5)));
+  gl_FragColor = vec4(col * alpha, alpha);
+}`;
+    const compile = (type, src) => {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null;
+    };
+    const vs = compile(gl.VERTEX_SHADER, VS);
+    const fs = compile(gl.FRAGMENT_SHADER, FS);
+    const prog = vs && fs ? gl.createProgram() : null;
+    if (prog) { gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog); }
+    if (!prog || !gl.getProgramParameter(prog, gl.LINK_STATUS)) return;
+    gl.useProgram(prog);
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(prog, 'p');
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    this.lavaGl = { gl, prog, cv, uBalls: gl.getUniformLocation(prog, 'u_balls'), uCa: gl.getUniformLocation(prog, 'u_ca'), uCb: gl.getUniformLocation(prog, 'u_cb') };
+  }
+
+  _lavaDraw(L, balls, acc, sec, swell) {
+    const { gl, cv, uBalls, uCa, uCb } = L;
+    const data = new Float32Array(28);
+    balls.slice(0, lavaQ.balls).forEach((b, i) => data.set([b.x, b.y, b.r * swell * (1 + b.pop * 0.5), b.c], i * 4));
+    const ca = hexRgb(acc), cb = hexRgb(sec);
+    gl.viewport(0, 0, cv.width, cv.height);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.uniform4fv(uBalls, data);
+    gl.uniform3f(uCa, ca[0] / 255, ca[1] / 255, ca[2] / 255);
+    gl.uniform3f(uCb, cb[0] / 255, cb[1] / 255, cb[2] / 255);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
+  _lava(cx, a, acc, sec, level, beat, st, dt, t, bb = {}) {
     const R = a.r * 1.3;
-    const n = 64;
-    if (!this.lavaCv) {
-      this.lavaCv = document.createElement('canvas');
-      this.lavaCv.width = this.lavaCv.height = n;
-      this.lavaBalls = Array.from({ length: 7 }, (_, i) => ({ x: rnd(0.25, 0.75), y: rnd(0.2, 0.9), vy: rnd(-0.05, 0.05), r: rnd(0.09, 0.15), c: i % 2 }));
+    if (!this.lavaCv || this.lavaCv.width !== lavaQ.res) this._lavaInit();
+    if (!this.lavaBalls) {
+      this.lavaBalls = Array.from({ length: 7 }, (_, i) => ({ x: rnd(0.25, 0.75), y: rnd(0.2, 0.9), vy: rnd(-0.05, 0.05), r: rnd(0.09, 0.15), c: i % 2, pop: 0 }));
     }
     const balls = this.lavaBalls;
     const mood = 0.4 + level * 1.2;
@@ -443,32 +597,12 @@ export class Scenes {
       b.x += Math.sin(t * 0.3 + b.r * 40) * 0.0008 * mood;
       b.x = Math.max(0.15, Math.min(0.85, b.x));
       b.y = Math.max(0.08, Math.min(0.95, b.y));
+      // Удар по своей полосе: басовые пятна (c = 0) толкает бас, остальные — высокие.
+      b.pop = Math.min(1.5, b.pop * Math.exp(-dt * 4) + (b.c === 0 ? bb.bass || 0 : bb.high || 0));
     }
-    const ctx = this.lavaCv.getContext('2d');
-    const img = ctx.createImageData(n, n);
-    const ca = hexRgb(acc), cb = hexRgb(sec);
     const swell = 1 + beat * 0.25 + level * 0.15;
-    for (let j = 0; j < n; j++) {
-      for (let i = 0; i < n; i++) {
-        const u = i / n, v = j / n;
-        let f = 0, fa = 0;
-        for (const b of balls) {
-          const dx = u - b.x, dy = v - b.y, rr = b.r * swell;
-          const q = (rr * rr) / (dx * dx + dy * dy + 0.0001);
-          f += q;
-          if (b.c === 0) fa += q;
-        }
-        const k = (j * n + i) * 4;
-        const mixk = fa / (f || 1);
-        const alpha = f > 1 ? 0.85 : Math.max(0, (f - 0.5) / 0.5) ** 2 * 0.6;
-        const core = f > 1 ? Math.min(1, (f - 1) * 0.35) * 45 : 0;
-        img.data[k] = ca[0] * mixk + cb[0] * (1 - mixk) + core;
-        img.data[k + 1] = ca[1] * mixk + cb[1] * (1 - mixk) + core;
-        img.data[k + 2] = ca[2] * mixk + cb[2] * (1 - mixk) + core;
-        img.data[k + 3] = alpha * 255;
-      }
-    }
-    ctx.putImageData(img, 0, 0);
+    // Поле считает шейдер в каждом пикселе; без WebGL слой пустой, обложка остаётся.
+    if (this.lavaGl) this._lavaDraw(this.lavaGl, balls, acc, sec, swell);
     cx.save();
     cx.imageSmoothingEnabled = true;
     cx.globalCompositeOperation = 'lighter';

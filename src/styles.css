@@ -344,7 +344,7 @@ body.light .now-blur { filter: blur(90px) saturate(1.3) brightness(1.15); }
 .now-cover {
   --pulse: 0; --tx: 0deg; --ty: 0deg;
   width: min(380px, 42vh, 34vw); aspect-ratio: 1; border-radius: var(--cover-radius); overflow: hidden; background: var(--surface);
-  transform: perspective(900px) rotateX(var(--ty)) rotateY(var(--tx)) scale(calc(1 + var(--pulse) * .045));
+  transform: perspective(900px) rotateX(var(--ty)) rotateY(var(--tx)) scale(calc(1 + var(--pulse) * .045 + var(--kick, 0)));
   box-shadow: 0 40px 110px -24px rgb(var(--accent-rgb) / calc(.85 * var(--glow))), 0 10px 30px rgba(0,0,0,.25);
   transition: border-radius .4s, box-shadow .6s;
 }
@@ -375,6 +375,13 @@ body.minimal-now .now-right { display: none; }
 .lyrics .ly { font: 700 26px/36px var(--font-display); color: var(--muted); opacity: .45; padding: 6px 0; cursor: pointer; transition: opacity .3s, color .3s, transform .3s var(--ease); transform-origin: left center; }
 .lyrics .ly:hover { opacity: .8; }
 .lyrics .ly.cur { opacity: 1; color: var(--text); transform: scale(1.03); text-shadow: 0 0 28px rgb(var(--accent-rgb) / calc(.7 * var(--glow))); }
+.lyrics .ly.cur { position: relative; }
+.lyrics .ly.cur::after { content: ''; position: absolute; left: 0; bottom: 0; height: 2px; width: calc(var(--kp, 0) * 100%); background: rgb(var(--accent-rgb)); border-radius: 2px; }
+.lyrics .ly .kw { transition: opacity .12s; white-space: pre-wrap; }
+.lyrics .ly.cur .kw { opacity: .4; }
+.lyrics .ly.cur .kw.on { opacity: 1; }
+.lyrics.nokara .ly.cur::after { display: none; }
+.lyrics.nokara .ly .kw { opacity: 1; }
 .lyrics.plain .ly { font-size: 18px; line-height: 28px; font-weight: 500; opacity: .85; cursor: default; padding: 2px 0; }
 .lyrics-empty { margin: auto; text-align: center; color: var(--muted); display: flex; flex-direction: column; gap: 14px; align-items: center; }
 .upnext { display: flex; flex-direction: column; gap: 4px; margin: auto 0; }
@@ -1367,7 +1374,11 @@ body[data-layout="deck"] .now-right { align-self: stretch; height: auto; min-hei
 body[data-layout="deck"] .now-right .ly { font-size: 18px; line-height: 26px; }
 
 /* ---------- Форма обложек ---------- */
-.now-cover { transform: perspective(900px) rotateX(calc(var(--ty) + var(--tiltx, 0deg))) rotateY(calc(var(--tx) + var(--tilt, 0deg))) rotate(var(--rz, 0deg)) scale(calc(1 + var(--pulse) * .045)); }
+.now-cover {
+  transform: perspective(900px) rotateX(calc(var(--ty) + var(--tiltx, 0deg))) rotateY(calc(var(--tx) + var(--tilt, 0deg))) rotate(calc(var(--rz, 0deg) + var(--jr, 0deg))) scale(calc(1 + var(--pulse) * .045 + var(--kick, 0)));
+  filter: brightness(calc(1 + var(--flash, 0) * .22));
+  outline: calc(var(--flash, 0) * 3px) solid rgb(var(--accent-rgb) / calc(var(--flash, 0) * .9));
+}
 @keyframes breathe { 0%,100% { transform: perspective(900px) rotateX(var(--tiltx, 0deg)) rotateY(var(--tilt, 0deg)) rotate(var(--rz, 0deg)) scale(1); } 50% { transform: perspective(900px) rotateX(var(--tiltx, 0deg)) rotateY(var(--tilt, 0deg)) rotate(var(--rz, 0deg)) scale(1.035); } }
 .now.has-scene .now-cover { -webkit-box-reflect: none !important; }
 

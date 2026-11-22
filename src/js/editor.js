@@ -4,8 +4,9 @@
 // Черновик сохраняется сам, у сохранённого стиля хранится история версий, есть отмена шагов.
 
 import { LOCALE } from './util.js';
-import { STYLES, md3Scheme, contrast, mix, hexToRgb, rgbToHex, rgbToHsl, hslToHex } from './theme.js';
+import { STYLES, lookOf, md3Scheme, contrast, mix, hexToRgb, rgbToHex, rgbToHsl, hslToHex } from './theme.js';
 import { BACKDROPS, MOTIONS } from './visuals.js';
+import { SCENES } from './scenes.js';
 
 // ---------- Цвета ----------
 
@@ -32,6 +33,13 @@ const normColor = (c) => { const p = parseColor(c); return toColor(p.hex, p.a); 
 
 const FONTS = { system: 'Системный', helvetica: 'Helvetica / Arial', bahnschrift: 'Bahnschrift', georgia: 'Georgia (с засечками)', mono: 'Моноширинный', rounded: 'Округлый' };
 const PARTICLES = { dot: 'Светящиеся точки', square: 'Квадраты', bubble: 'Пузырьки', spark: 'Искры', streak: 'Неоновые штрихи', star: 'Звёздочки', prism: 'Перламутровые ромбики' };
+
+// Варианты облика и сцены для редактора (значения — те же, что в LOOKS и SCENES).
+const LAYOUT_OPTS = { split: 'Разделённый', center: 'По центру', stage: 'Сцена', magazine: 'Журнал', cinema: 'Кинотеатр', deck: 'Колода' };
+const COVER_OPTS = { soft: 'Мягкая', circle: 'Круг', squircle: 'Суперэллипс', frame: 'Рамка', tilt: 'Наклон', reflect: 'Отражение', backing: 'Подложка', neon: 'Неон', stack: 'Стопка', polaroid: 'Полароид', leaf: 'Лист', gem: 'Огранка', flower: 'Цветок', cookie: 'Печенье', arch: 'Арка' };
+const PLAY_OPTS = { circle: 'Круг', squircle: 'Суперэллипс', ring: 'Кольцо', square: 'Квадрат', fab: 'Плавающая кнопка', hex: 'Шестиугольник' };
+const BAR_OPTS = { full: 'Полная', float: 'Плавающая', flat: 'Плоская' };
+const SCENE_OPTS = { auto: 'Как в основе', ...SCENES };
 
 export const LAYERS = {
   theme: {
@@ -83,6 +91,15 @@ export const LAYERS = {
       ['holo', 'toggle', 'Голографические акценты'],
     ],
   },
+  look: {
+    title: 'Облик', hint: 'Расположение экрана и форма элементов',
+    fields: [
+      ['layout', 'select', 'Расположение', LAYOUT_OPTS],
+      ['cover', 'select', 'Форма обложки', COVER_OPTS],
+      ['play', 'select', 'Кнопка play', PLAY_OPTS],
+      ['bar', 'select', 'Панель управления', BAR_OPTS],
+    ],
+  },
   player: {
     title: 'Экран плеера', hint: 'Фон, обложка и частицы',
     fields: [
@@ -90,6 +107,7 @@ export const LAYERS = {
       ['motion', 'select', 'Движение обложки', MOTIONS],
       ['particle', 'select', 'Форма частиц', PARTICLES],
       ['particles', 'toggle', 'Частицы в бит'],
+      ['scene', 'select', 'Сцена вместо обложки', SCENE_OPTS],
     ],
   },
 };
@@ -153,6 +171,16 @@ const P_ACCENT = {
 const clone = (o) => JSON.parse(JSON.stringify(o));
 const FONT_OF = { swiss: 'helvetica', noir: 'bahnschrift', paper: 'georgia' };
 
+/** Старые свои стили не знают новых слоёв и полей: добираем их из основы. */
+function fillMissing(layers, baseId) {
+  const base = styleToLayers(baseId, {});
+  for (const ln of Object.keys(base)) {
+    layers[ln] = layers[ln] || {};
+    for (const k of Object.keys(base[ln])) if (layers[ln][k] === undefined) layers[ln][k] = base[ln][k];
+  }
+  return layers;
+}
+
 /** Слои любого стиля — встроенного или своего. */
 export function styleToLayers(id, settings) {
   const st = STYLES[id] || STYLES.aura;
@@ -167,6 +195,7 @@ export function styleToLayers(id, settings) {
       btn: st.btnAccent || st.md3 ? 'accent' : st.neon ? 'outline' : st.glass ? 'glass' : 'text',
     },
     shape: { radius: st.radius, cover: st.cover, kit: st.md3 ? 'md3' : 'glow' },
+    look: (({ layout, cover, play, bar }) => ({ layout, cover, play, bar }))(lookOf(id)),
     type: {
       font: FONT_OF[id] || 'system',
       weight: id === 'swiss' ? 800 : id === 'paper' || st.md3 ? 400 : id === 'soft' || id === 'nordic' ? 600 : 700,
@@ -178,7 +207,7 @@ export function styleToLayers(id, settings) {
     },
     player: {
       backdrop: settings.backdrop || 'glow', motion: settings.coverMotion || 'beat',
-      particle: st.particle || 'dot', particles: settings.particles !== false,
+      particle: st.particle || 'dot', particles: settings.particles !== false, scene: 'auto',
     },
   };
 }
@@ -198,7 +227,7 @@ export function customToStyle(c) {
     glass: L.effects.art === 'glass', mica: L.effects.art === 'mica',
     blur: L.effects.blur, neon: L.effects.neon, borders: L.effects.borders,
     paperTex: L.effects.paper, holo: L.effects.holo,
-    particle: L.player.particle, player: L.player, css: c.css || '',
+    particle: L.player.particle, scene: L.player.scene === 'auto' ? undefined : L.player.scene, player: L.player, css: c.css || '',
   };
 }
 
@@ -308,9 +337,9 @@ export function createEditor(ctx) {
     let baseId, startLayers, css = '', name;
     if (target) {
       // Правка своего стиля: сброс возвращает к последнему сохранению.
-      baseId = target.base; startLayers = clone(target.layers); css = target.css || ''; name = target.name;
+      baseId = target.base; startLayers = fillMissing(clone(target.layers), target.base); css = target.css || ''; name = target.name;
     } else if (src) {
-      baseId = src.base; startLayers = clone(src.layers); css = src.css || ''; name = `${src.name} (копия)`;
+      baseId = src.base; startLayers = fillMissing(clone(src.layers), src.base); css = src.css || ''; name = `${src.name} (копия)`;
     } else {
       baseId = STYLES[base] ? base : 'aura';
       startLayers = styleToLayers(baseId, settings);

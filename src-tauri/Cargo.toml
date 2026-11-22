@@ -1,6 +1,6 @@
 [package]
 name = "glow"
-version = "1.13.1"
+version = "1.14.0"
 description = "Glow — музыкальный плеер для ПК"
 edition = "2021"
 

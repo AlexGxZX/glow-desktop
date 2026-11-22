@@ -2,7 +2,9 @@
 
 import { I } from './icons.js';
 import { STYLES, ACCENTS, MD3_SEEDS, md3Scheme } from './theme.js';
-import { BACKDROPS, MOTIONS } from './visuals.js';
+import { BACKDROPS, MOTIONS, PART_PRESETS, QUALITIES } from './visuals.js';
+import { profilesCard } from './vprofiles.js';
+import { checkTimeStyle } from './timestyle.js';
 import { SCENES } from './scenes.js';
 import { loadCustom, getCustom, exportData, addImported, duplicateCustom, deleteCustom } from './editor.js';
 import { confirmModal, showMenu } from './dialogs.js';
@@ -41,6 +43,9 @@ const STYLE_GROUPS = [
   ['Спокойные', ['softdark', 'studio', 'mono', 'swiss']],
   ['Светлые', ['light', 'soft', 'nordic', 'paper']],
 ];
+
+const HOURS = Object.fromEntries(Array.from({ length: 24 }, (_, h) => [String(h), String(h).padStart(2, '0') + ':00']));
+const todStyles = () => Object.fromEntries(Object.keys(STYLES).filter((k) => !STYLES[k].user && k !== '__edit').map((k) => [k, STYLES[k].name]));
 
 function styleGroups() {
   const ids = Object.keys(STYLES).filter((k) => !STYLES[k].md3 && !STYLES[k].user && k !== '__edit');
@@ -92,8 +97,8 @@ export const range = (key, min, max, step, val, label) => `<input type="range" d
 
 // Вкладки настроек: какая группа где. Группы без записи попадают во «Вид».
 const SET_TABS = [
-  ['look', 'Вид', 'palette', ['Язык', 'Мои стили', 'Стиль', 'Material You', 'Цвет', 'Стекло', 'Свечение и анимации', 'Иконка приложения']],
-  ['player', 'Звук и плеер', 'eq', ['Звук и воспроизведение', 'Экран воспроизведения']],
+  ['look', 'Вид', 'palette', ['Язык', 'Мои стили', 'Стиль', 'Стиль по времени суток', 'Material You', 'Цвет', 'Стекло', 'Свечение и анимации', 'Профили визуала', 'Экран воспроизведения', 'Иконка приложения']],
+  ['player', 'Звук и плеер', 'eq', ['Звук и воспроизведение']],
   ['library', 'Медиатека', 'folder', ['Медиатека', 'Боковое меню']],
   ['online', 'Онлайн', 'globe', ['Интернет', 'Скробблинг', 'Discord']],
   ['system', 'Система', 'settings', ['Трей и панель задач', 'Горячие клавиши', 'Обмен с Android', 'Данные и резервные копии']],
@@ -154,6 +159,12 @@ export function renderSettings(c) {
     </div>
 
     <div class="set-group"><div class="heading">Стиль</div>${styleGroups()}</div>
+    <div class="set-group"><div class="heading">Стиль по времени суток</div><div class="set-card">
+      ${row('Включить', 'В выбранные часы включается свой стиль, после окна возвращается прежний', tog('todOn', settings.todOn))}
+      ${row('С', 'Начало окна', sel('todFrom', HOURS))}
+      ${row('До', 'Конец окна; если он раньше начала, окно идёт через полночь', sel('todTo', HOURS))}
+      ${row('Стиль в это время', '', sel('todStyle', todStyles()))}
+    </div></div>
     <div class="set-group"><div class="heading">Material You</div>
       <div class="caption" style="margin:-4px 0 12px">Тёмные темы на системе Material 3: поверхности и выделения строятся по тональным уровням, поэтому текст всегда читается.</div>
       <div class="styles-grid">${Object.keys(STYLES).filter((k) => STYLES[k].md3).map(styleCard).join('')}</div></div>
@@ -191,12 +202,21 @@ export function renderSettings(c) {
       ${row('Живые детали стиля', 'Лучи у Aura, снег у Nordic, угли у Copper, светлячки у Soft Dark и другие — лёгкий слой поверх фона окна', tog('styleMotifs', settings.styleMotifs !== false))}
     </div></div>
 
+    ${profilesCard()}
     <div class="set-group"><div class="heading">Экран воспроизведения</div><div class="set-card">
       ${STYLES[settings.style] && STYLES[settings.style].user ? '<div class="set-row caption">У своего стиля экран плеера настраивается в редакторе стиля (слой «Экран плеера»). Ниже — настройки для остальных стилей.</div>' : ''}
       ${row('Сцена', 'Что в центре вместо обложки. «Как в стиле» — у Dark Premium винил, у Studio кассета, у Deep Space планета…', sel('scene', { auto: 'Как в стиле', ...SCENES }))}
       ${row('Фон', '', sel('backdrop', BACKDROPS))}
+      ${row('Фон открытой песни', 'Цвет дизайна — цвет стиля, а не обложки. Размытая обложка при этом скрывается', sel('nowBg', { cover: 'Из обложки', design: 'Цвет дизайна' }))}
       ${row('Движение обложки', '«Бит» — обложка и свечение пульсируют на ударах баса', sel('coverMotion', MOTIONS))}
+      ${row('Караоке-подсветка', 'Текущая строка заполняется по мере пения; если в .lrc есть метки на словах, подсвечиваются слова', tog('karaoke', settings.karaoke !== false))}
       ${row('Частицы в бит', 'Вылетают из-за обложки на ударах; у каждого стиля свои', tog('particles', settings.particles))}
+      ${row('Качество графики', 'Меньше — легче для слабых видеокарт: меньше частиц и детализация жидкого света', sel('quality', QUALITIES))}
+      ${row('Форма частиц', 'Как выглядят частицы на ударах и в потоке. «Как в стиле» — прежние формы стиля', sel('partPreset', PART_PRESETS))}
+      ${row('Количество частиц', 'Сколько частиц на ударах и в потоке под музыку', range('partCount', 0.5, 2, 0.1, settings.partCount, Math.round(settings.partCount * 100) + '%'))}
+      ${row('Чувствительность к ударам', 'Выше — чаще срабатывает на всплески (в том числе на хай-хетах)', range('beatSens', 0, 1, 0.05, settings.beatSens, Math.round(settings.beatSens * 100) + '%'))}
+      ${row('Сила колец на вокале', 'Кольца от обложки на средних частотах; 0% — выключить', range('ringStrength', 0, 1, 0.05, settings.ringStrength, Math.round(settings.ringStrength * 100) + '%'))}
+      ${row('Сила реакции обложки','Масштаб, поворот и вспышка обложки на ударах (работает при «Движении обложки: Бит»)', range('coverStrength', 0, 1, 0.05, settings.coverStrength, Math.round(settings.coverStrength * 100) + '%'))}
       ${row('Синхронизация вспышек', 'Если вспышки опережают удары, прибавь. Для Bluetooth обычно 150–300 мс', range('beatDelay', 0, 600, 10, settings.beatDelay, settings.beatDelay + ' мс'))}
       ${row('Справа от обложки', '', sel('nowSide', { lyrics: 'Текст песни', queue: 'Очередь' }))}
     </div></div>
@@ -340,14 +360,15 @@ export async function importStyle() {
 
 export function afterSetting(key, rerender = true) {
   saveSettings();
-  if (['style', 'styleMotifs', 'accentMode', 'customAccent', 'glow', 'animations', 'contrast', 'md3Dynamic', 'md3Seed', 'md3Variant', 'md3Mode', 'glassBlur', 'glassAlpha', 'glassTint', 'glassLens'].includes(key)) refreshTheme();
+  if (['style', 'styleMotifs', 'accentMode', 'nowBg', 'customAccent', 'glow', 'animations', 'contrast', 'md3Dynamic', 'md3Seed', 'md3Variant', 'md3Mode', 'glassBlur', 'glassAlpha', 'glassTint', 'glassLens'].includes(key)) refreshTheme();
   if (['replayGain', 'gapless', 'rgPreamp', 'crossfade'].includes(key)) { applyAudio(); prepareNext(); }
   if (key === 'lang') { flushNow(); (window.__glowFlush ? window.__glowFlush() : Promise.resolve()).then(() => location.reload()); return; }
+  if (['todOn', 'todFrom', 'todTo', 'todStyle'].includes(key)) checkTimeStyle();
   if (key === 'watchFolders') { watchFolders(); if (settings.watchFolders) scan(true); }
   if (['discord', 'discordCover', 'offline'].includes(key)) updateDiscord(curTrack());
   if (key === 'offline' && !settings.offline) scheduleFlush(2000);
   if (['closeToTray', 'globalHotkeys', 'mediaKeys'].includes(key)) { applyDesktop().then(() => { if (S.view.name === 'settings') render($('#content').scrollTop); }); return; }
-  if (['backdrop', 'coverMotion', 'particles', 'beatDelay', 'animations', 'scene'].includes(key)) applyVisualSettings();
+  if (['backdrop', 'coverMotion', 'particles', 'partPreset', 'quality', 'partCount', 'beatSens', 'coverStrength', 'ringStrength', 'beatDelay', 'animations', 'scene'].includes(key)) applyVisualSettings();
   if (key === 'nowSide' && S.nowOpen) renderNowRight();
   if (key === 'sort') { render(0); return; }
   if (rerender && S.view.name === 'settings') render($('#content').scrollTop);

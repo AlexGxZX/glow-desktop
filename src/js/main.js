@@ -10,9 +10,10 @@ import { bindUi } from './handlers.js';
 import { applyDesktop, scan, watchFolders } from './library.js';
 import { closeNow, next, playTracks, prev, restoreResume, togglePlay, updateButtons, updateNowPlaying } from './player.js';
 import { setAppIcon } from './settings.js';
+import { startTimeStyle } from './timestyle.js';
 import { normalizeSidebar, renderSidebar } from './sidebar.js';
 import { S, ambient, curTrack, editor, engine, saveSettings, setLibrary, settings, visuals, setEditor } from './state.js';
-import { applyAudio, applyVisualSettings, refreshTheme } from './ui.js';
+import { applyAudio, applyVisualSettings, backgroundTheme, refreshTheme } from './ui.js';
 import { $, LANG, esc, fileSrc, invoke, toast } from './util.js';
 import { render } from './views.js';
 import { checkUpdates } from './updates.js';
@@ -160,7 +161,7 @@ export async function init() {
   applyAudio();
   applyVisualSettings();
   S.theme = applyTheme(settings, null);
-  visuals.setTheme(S.theme);
+  visuals.setTheme(backgroundTheme(S.theme));
   ambient.set(S.theme.fx || (settings.styleMotifs !== false ? S.theme.motif : null), S.theme, settings.animations);
   renderSidebar();
   updateButtons();
@@ -179,6 +180,7 @@ export async function init() {
   invoke('set_ui_lang', { lang: LANG }).catch(() => {});
   initOnline();
   initDrop();
+  startTimeStyle();
   if (settings.scanOnStart && settings.folders.length) scan();
   else setTimeout(() => relinkDialog(false), 800);
   // Своя иконка окна; ярлыки уже обновлены при выборе, их не трогаем.

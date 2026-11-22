@@ -451,7 +451,13 @@ visuals.anchor = () => {
   return { x: c.left - n.left + c.width / 2, y: c.top - n.top + c.height / 2, r: c.width / 2 };
 };
 visuals.onPulse = (p) => {
-  if (vis().motion === 'beat') $('#now-cover').style.setProperty('--pulse', p.toFixed(3));
+  if (vis().motion !== 'beat') return;
+  const el = $('#now-cover');
+  const fx = visuals.coverFx;
+  el.style.setProperty('--pulse', p.toFixed(3));
+  el.style.setProperty('--kick', fx.kick.toFixed(3));
+  el.style.setProperty('--jr', fx.jr.toFixed(2) + 'deg');
+  el.style.setProperty('--flash', fx.flash.toFixed(3));
 };
 
 export function renderNowRight() {
@@ -459,7 +465,7 @@ export function renderNowRight() {
   const t = curTrack();
   if (settings.nowSide === 'lyrics') {
     if (S.lyrics && S.lyricsFor === (t && t.path)) {
-      box.innerHTML = `<div class="lyrics${S.lyrics.synced ? '' : ' plain'}" id="ly">${S.lyrics.lines.map((l, i) => `<div class="ly" data-li="${i}" data-t="${l.t}">${esc(l.text) || '♪'}</div>`).join('')}</div>`
+      box.innerHTML = `<div class="lyrics${S.lyrics.synced ? '' : ' plain'}" id="ly">${S.lyrics.lines.map((l, i) => `<div class="ly" data-li="${i}" data-t="${l.t}">${l.words ? l.words.map((w) => `<span class="kw">${esc(w.text)}</span>`).join('') : esc(l.text) || '♪'}</div>`).join('')}</div>`
         + (S.lyricsOnline ? `<div class="ly-source caption">Текст из LRCLIB · <button class="btn-text" data-ncmd="lyrics-wrong">не тот текст</button></div>` : '');
       S.lyIdx = -1;
       updateLyricsLine(true);
@@ -515,15 +521,33 @@ export function updateLyricsLine(force = false) {
   const box = $('#ly');
   if (!box) return;
   const i = lineAt(S.lyrics, engine.time);
-  if (i === S.lyIdx && !force) return;
-  const old = box.querySelector('.ly.cur');
-  if (old) old.classList.remove('cur');
-  S.lyIdx = i;
-  const el = box.querySelector(`[data-li="${i}"]`);
-  if (el) {
-    el.classList.add('cur');
-    box.scrollTop = el.offsetTop - box.clientHeight / 2 + el.clientHeight / 2;
-  } else if (i < 0) box.scrollTop = 0;
+  box.classList.toggle('nokara', settings.karaoke === false);
+  if (i !== S.lyIdx || force) {
+    const old = box.querySelector('.ly.cur');
+    if (old) old.classList.remove('cur');
+    S.lyIdx = i;
+    const el = box.querySelector(`[data-li="${i}"]`);
+    if (el) {
+      el.classList.add('cur');
+      box.scrollTop = el.offsetTop - box.clientHeight / 2 + el.clientHeight / 2;
+    } else if (i < 0) box.scrollTop = 0;
+  }
+  karaoke(box, i, engine.time);
+}
+
+/** Караоке: слова подсвечиваются по меткам, без них строка заполняется по времени до следующей. */
+function karaoke(box, i, t) {
+  const l = S.lyrics.lines[i];
+  const el = l && box.querySelector(`[data-li="${i}"]`);
+  if (!el || settings.karaoke === false) return;
+  if (l.words) {
+    el.querySelectorAll('.kw').forEach((w, k) => {
+      const on = t >= l.words[k].t - 0.05;
+      if (on !== w.classList.contains('on')) w.classList.toggle('on', on);
+    });
+  } else {
+    el.style.setProperty('--kp', Math.min(1, Math.max(0, (t - l.t) / Math.max(0.1, l.end - l.t))).toFixed(3));
+  }
 }
 
 // ================= Очередь =================
