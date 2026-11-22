@@ -9,6 +9,7 @@ import { S, curTrack, engine, favs, meta, saveMeta, saveSettings, setLibrary, se
 import { applyAudio, coverHtml, refreshTheme, starsHtml } from './ui.js';
 import { $, $$, UNKNOWN_ARTIST, clamp, esc, fmt, invoke, toast, tracksWord } from './util.js';
 import { go, render } from './views.js';
+import { pickOnlineCover } from './online.js';
 
 // ================= Меню =================
 
@@ -160,6 +161,7 @@ export function tagEditor(tracks, album = false) {
     <div class="tg-wrap">
       <div class="tg-cover-col">
         <button class="tg-cover" id="tg-cover" title="Выбрать картинку">${coverHtml(t.cover, true)}<span class="tg-cover-hint">${I.edit}Сменить</span></button>
+        <button class="btn-text" id="tg-online">${I.globe}Найти в интернете</button>
         <button class="btn-text" id="tg-nocover">Убрать обложку</button>
       </div>
       <div class="tg-fields">${fields}</div>
@@ -169,6 +171,12 @@ export function tagEditor(tracks, album = false) {
   const el = m.el;
   $('#tg-cover', el).addEventListener('click', async () => {
     const p = await invoke('pick_cover').catch(() => null);
+    if (!p) return;
+    newCover = p; removeCover = false;
+    $('#tg-cover', el).innerHTML = `${coverHtml(p, true)}<span class="tg-cover-hint">${I.edit}Сменить</span>`;
+  });
+  $('#tg-online', el).addEventListener('click', async () => {
+    const p = await pickOnlineCover(t.album_artist || t.artist, t.album || (album ? '' : t.title));
     if (!p) return;
     newCover = p; removeCover = false;
     $('#tg-cover', el).innerHTML = `${coverHtml(p, true)}<span class="tg-cover-hint">${I.edit}Сменить</span>`;

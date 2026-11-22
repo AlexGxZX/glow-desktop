@@ -11,6 +11,8 @@ import { afterSetting, importStyle, range, sel, setAppIcon, userStyleMenu } from
 import { addToPlaylist, bindSidebar, newPlaylist, pinToSidebar, renderPlaylists, saveSidebar, setNavMode, startNavEdit, toggleNav } from './sidebar.js';
 import { smartEditor } from './smart.js';
 import { checkUpdates } from './updates.js';
+import { exportPlaylistM3u, importM3u } from './collection.js';
+import { connectLastfm, connectListenBrainz, disconnectLastfm, disconnectListenBrainz, flushScrobbles, forgetOnlineLyrics, pendingScrobbles } from './online.js';
 import { S, curTrack, editor, engine, flushNow, meta, saveMeta, saveSettings, settings, track, vis } from './state.js';
 import { folderMenu } from './ui.js';
 import { $, $$, UNKNOWN_ARTIST, esc, fmt, invoke, toast } from './util.js';
@@ -226,6 +228,8 @@ export function bindUi() {
     const c = e.target.closest('[data-ncmd]');
     if (c && curTrack()) {
       if (c.dataset.ncmd === 'lyrics-edit') lyricsEditor(curTrack());
+      else if (c.dataset.ncmd === 'lyrics-online') { if (settings.offline) toast('Включён режим без интернета — выключи его в Настройки → Онлайн'); else loadLyrics(true); }
+      else if (c.dataset.ncmd === 'lyrics-wrong') { forgetOnlineLyrics(curTrack()).then(() => { toast('Этот текст больше не покажется. Можно ввести свой.'); loadLyrics(); }); }
       else if (c.dataset.ncmd === 'lyrics-pick') invoke('pick_lrc').then((p) => { if (p) { meta.lrcFiles[curTrack().path] = p; saveMeta(); loadLyrics(); } });
     }
   });
@@ -309,6 +313,20 @@ export async function onContentClick(e) {
       }
       case 'relink': relinkDialog(true); break;
       case 'update-check': checkUpdates(true); break;
+      case 'm3u-import': importM3u(); break;
+      case 'pl-export': exportPlaylistM3u(key); break;
+      case 'lfm-connect': connectLastfm(() => render($('#content').scrollTop)); break;
+      case 'lfm-disconnect': disconnectLastfm(); render($('#content').scrollTop); break;
+      case 'lb-connect': connectListenBrainz($('#lb-token') && $('#lb-token').value, () => render($('#content').scrollTop)); break;
+      case 'lb-disconnect': disconnectListenBrainz(); render($('#content').scrollTop); break;
+      case 'scrobble-flush': {
+        const n = pendingScrobbles();
+        await flushScrobbles();
+        const left = pendingScrobbles();
+        toast(left ? `Не отправлено: ${left}. Попробую позже.` : `Отправлено: ${n}`);
+        render($('#content').scrollTop);
+        break;
+      }
       case 'lrc-folder': {
         const p = await invoke('pick_folder').catch(() => null);
         if (p) { settings.lyricsFolder = p; saveSettings(); await indexLrcFolder(); render($('#content').scrollTop); toast(`Найдено текстов: ${S.lrcIndex ? S.lrcIndex.size : 0}`); }

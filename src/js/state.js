@@ -24,6 +24,7 @@ export const DEFAULTS = {
   contrast: 'standard', md3Dynamic: false, md3Seed: '#6750a4', appIcon: 'glow',
   md3Variant: 'tonal', md3Mode: 'dark', glassBlur: 30, glassAlpha: 0.14, glassTint: false, glassLens: false,
   crossfade: 0, lyricsFolder: '', rgAuto: true, closeToTray: false, globalHotkeys: true, mediaKeys: false, watchFolders: true, autoUpdate: true,
+  offline: false, onlineLyrics: true, lfmSession: '', lfmUser: '', lbToken: '', lbUser: '', discord: false, discordCover: true,
   backdrop: 'glow', coverMotion: 'beat', particles: true, beatDelay: 0, nowSide: 'lyrics',
   autoContinue: true, gapless: true, replayGain: 'track', rgPreamp: 0, resume: true,
   volume: 0.8, muted: false, sort: 'title',
@@ -82,6 +83,7 @@ export const S = {
   sleep: null, scanning: false,
   listened: 0, counted: false, lastTime: 0, errors: 0,
   nowOpen: false, queueOpen: false, mini: false,
+  external: new Map(), // треки, перетащенные в окно не из медиатеки
 };
 
 export const engine = new Engine(fileSrc);
@@ -101,6 +103,7 @@ export const stub = (p) => ({ path: p, title: baseName(p), artist: 'Файл н�
 export function setLibrary(tracks) {
   S.tracks = tracks;
   S.byPath = new Map(tracks.map((t) => [t.path, t]));
+  for (const [p, t] of S.external) if (!S.byPath.has(p)) S.byPath.set(p, t);
   // Посчитанная громкость для файлов без тегов ReplayGain.
   for (const t of tracks) if (!t.rg_track && !t.rg_album && meta.rgCalc[t.path] !== undefined) t.rg_track = `${meta.rgCalc[t.path]} dB`;
   rememberKnown();

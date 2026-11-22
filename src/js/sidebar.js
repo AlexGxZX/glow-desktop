@@ -24,6 +24,7 @@ export const BUILTIN_NAV = {
   favorites: ['favorites', null, 'Избранное', 'heart'],
   history: ['history', null, 'История', 'history'],
   stats: ['stats', null, 'Статистика', 'stats'],
+  wrapped: ['wrapped', null, 'Итоги года', 'star'],
   'smart:recent': ['smart', 'recent', 'Недавно добавленные', 'smart'],
   'smart:most': ['smart', 'most', 'Часто слушаю', 'smart'],
   'smart:rated': ['smart', 'rated', 'Лучшие по оценкам', 'smart'],
@@ -37,7 +38,7 @@ export function defaultSidebar(mode = 'full') {
     mode,
     groups: [
       g('lib', 'Медиатека', ['tracks', 'albums', 'artists', 'genres', 'folders']),
-      g('mine', 'Моё', ['favorites', 'history', 'stats']),
+      g('mine', 'Моё', ['favorites', 'history', 'stats', 'wrapped']),
       g('smart', 'Подборки', ['smart:recent', 'smart:most', 'smart:rated', 'smart:forgotten']),
       { id: 'playlists', title: 'Плейлисты', type: 'playlists', items: [] },
     ],
@@ -53,7 +54,12 @@ export function normalizeSidebar(sb) {
     g.items = (g.items || []).filter((it) => it && it.id && (BUILTIN_NAV[it.id] || it.view) && !seen.has(it.id) && seen.add(it.id));
   }
   const first = sb.groups.find((g) => g.type !== 'playlists');
-  for (const id of Object.keys(BUILTIN_NAV)) if (!seen.has(id) && first) first.items.push({ id });
+  // Новые встроенные пункты: «Итоги года» — в «Моё», остальные — в первую группу.
+  for (const id of Object.keys(BUILTIN_NAV)) {
+    if (seen.has(id)) continue;
+    const target = (id === 'wrapped' && sb.groups.find((g) => g.id === 'mine')) || first;
+    if (target) target.items.push({ id });
+  }
   if (!sb.groups.some((g) => g.type === 'playlists')) sb.groups.push({ id: 'playlists', title: 'Плейлисты', type: 'playlists', items: [] });
   return sb;
 }

@@ -67,13 +67,14 @@ const BASE = `http://127.0.0.1:${server.address().port}/index.html`;
 const browser = await chromium.launch({ executablePath: process.env.GLOW_CHROME || undefined, args: ['--autoplay-policy=no-user-gesture-required'] });
 const results = [];
 
-async function page() {
+async function page(init) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const pg = await ctx.newPage();
   pg.errors = [];
   pg.on('pageerror', (e) => pg.errors.push(String(e)));
   pg.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) pg.errors.push(m.text()); });
   pg.on('console', (m) => { if (/Content Security Policy/i.test(m.text())) pg.errors.push('CSP: ' + m.text()); });
+  if (init) await pg.addInitScript({ content: init });
   await pg.addInitScript({ path: path.join(here, 'mock.js') });
   await pg.goto(BASE);
   await pg.waitForSelector('.row', { timeout: 10000 });
@@ -82,11 +83,11 @@ async function page() {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const check = (ok, msg) => { if (!ok) throw new Error(msg); };
 
-async function scenario(name, fn) {
+async function scenario(name, fn, { init } = {}) {
   const t0 = Date.now();
   let pg;
   try {
-    pg = await page();
+    pg = await page(init);
     await fn(pg);
     check(!pg.errors.length, 'ошибки в консоли:\n  ' + pg.errors.join('\n  '));
     results.push({ name, ok: true, ms: Date.now() - t0 });
@@ -248,6 +249,110 @@ await scenario('настройки: вкладки и поиск', async (pg) =>
   await sleep(200);
   await pg.screenshot({ path: path.join(shots, 'settings-tabs.png') });
 });
+
+await scenario('тексты из LRCLIB, если своего текста нет', async (pg) => {
+  await pg.evaluate(() => sessionStorage.setItem('fakeLyrics', '1'));
+  await pg.reload(); await pg.waitForSelector('.row');
+  await pg.dblclick('.row[data-i="1"]'); // у второго трека нет своего .lrc
+  await sleep(400);
+  await pg.keyboard.press('n');
+  await sleep(400);
+  if (!(await pg.$('#ly'))) { await pg.click('#now-lyrics'); await sleep(300); }
+  check((await pg.textContent('#now-right')).includes('Текст из LRCLIB'), 'текст из LRCLIB не показан');
+  check((await pg.textContent('#now-right')).includes('не тот текст'), 'нет кнопки «не тот текст»');
+});
+
+await scenario('обложка из интернета в редакторе тегов', async (pg) => {
+  await pg.click('.row[data-i="0"]', { button: 'right' });
+  await sleep(150);
+  await pg.click('#menu .mi[data-m="tags"]');
+  await sleep(200);
+  await pg.click('#tg-online');
+  await sleep(300);
+  check(await pg.$$eval('.oc-item', (e) => e.length) === 4, 'нет вариантов обложек');
+  await pg.screenshot({ path: path.join(shots, 'covers.png') });
+  await pg.click('.oc-item[data-oc="2"]');
+  await sleep(200);
+  check((await pg.innerHTML('#tg-cover')).includes('c2'), 'выбранная обложка не подставилась');
+});
+
+await scenario('скробблинг: подключение и отправка', async (pg) => {
+  await pg.click('#sidebar [data-view="settings"]');
+  await sleep(200);
+  await pg.click('[data-settab="online"]');
+  await pg.click('[data-cmd="lfm-connect"]');
+  await sleep(300);
+  await pg.click('#lfm-done');
+  await sleep(300);
+  check((await pg.textContent('#content')).includes('Подключён: tester'), 'Last.fm не подключился');
+  await pg.fill('#lb-token', 'abc');
+  await pg.click('[data-cmd="lb-connect"]');
+  await sleep(300);
+  check((await pg.textContent('#content')).includes('Подключён: lb-user'), 'ListenBrainz не подключился');
+  await pg.screenshot({ path: path.join(shots, 'online-settings.png') });
+  // 12-секундные тестовые треки короче 30 с — по правилам Last.fm не скробблятся.
+  await pg.click('#sidebar [data-view="tracks"]');
+  await pg.dblclick('.row[data-i="0"]');
+  await sleep(7000);
+  check(!(await pg.evaluate(() => window.__glowScrobbled || 0)), 'короткий трек не должен скробблиться');
+});
+
+await scenario('плейлист .m3u: экспорт и импорт', async (pg) => {
+  await pg.click('.row[data-i="0"]', { button: 'right' });
+  await sleep(150);
+  await pg.click('#sidebar [data-navcmd="pl-new"]');
+  await sleep(150);
+  await pg.fill('#pm-in', 'Экспорт');
+  await pg.click('#pm-ok');
+  await sleep(200);
+  await pg.click('#sidebar .nav >> text=Экспорт');
+  await sleep(200);
+  check(await pg.$('[data-cmd="pl-export"]'), 'нет кнопки экспорта');
+  // Импорт: файл с абсолютным, относительным и чужим путём.
+  await pg.evaluate(() => sessionStorage.setItem('savedSync', '#EXTM3U\n#EXTINF:12,Neon Coast - Свет\nC:\\Music\\Afterglow\\1.wav#1\n#EXTINF:12,Mira Vale - Echoes\nE:\\Other\\echoes.mp3\nD:\\nope.mp3\n'));
+  await pg.click('#sidebar [data-view="settings"]');
+  await pg.click('[data-settab="library"]');
+  await pg.click('[data-cmd="m3u-import"]');
+  await sleep(500);
+  check(/Импортировано плейлистов: 1, треков: 2, не найдено в медиатеке: 1/.test(await pg.textContent('#toast')), `импорт: ${await pg.textContent('#toast')}`);
+});
+
+await scenario('перетаскивание файлов в окно', async (pg) => {
+  await pg.evaluate(() => window.__glowEmit('tauri://drag-enter', {}));
+  await sleep(100);
+  check(await pg.$eval('.drop-over', (e) => e.classList.contains('show')), 'нет подсказки при перетаскивании');
+  await pg.screenshot({ path: path.join(shots, 'drop.png') });
+  await pg.evaluate(() => window.__glowEmit('tauri://drag-drop', { paths: ['E:\\New Music', 'E:\\single.flac'] }));
+  await sleep(500);
+  check((await pg.textContent('.modal')).includes('3 трека'), 'окно с треками не появилось');
+  check(await pg.$('#dr-add'), 'нет кнопки «добавить папку»');
+  await pg.click('#dr-play');
+  await sleep(400);
+  check((await pg.textContent('#pb-title')).includes('Из папки'), 'перетащенное не заиграло');
+});
+
+await scenario('дубликаты', async (pg) => {
+  await pg.evaluate(() => sessionStorage.setItem('dupes', '1'));
+  await pg.reload(); await pg.waitForSelector('.row');
+  await pg.click('#sidebar [data-view="settings"]');
+  await pg.click('[data-settab="library"]');
+  await pg.click('[data-go="dupes"]');
+  await sleep(300);
+  check(await pg.$$eval('.dupe-group', (g) => g.length) === 1, 'группа дубликатов не найдена');
+  check((await pg.textContent('.dupe-row.best')).includes('FLAC'), 'лучшей должна быть FLAC-копия');
+  await pg.screenshot({ path: path.join(shots, 'dupes.png') });
+});
+
+await scenario('итоги года', async (pg) => {
+  check((await pg.textContent('#sidebar')).includes('Итоги года'), 'нет пункта в меню');
+  await pg.click('#sidebar [data-view="wrapped"]');
+  await sleep(400);
+  const txt = await pg.textContent('#content');
+  const dbg = await pg.evaluate(() => { const m = JSON.parse(localStorage.getItem('glow.meta') || '{}'); return `history=${(m.history || []).length} files=${(sessionStorage.getItem('mockFiles') || '').length}`; });
+  check(txt.includes('Итоги 2026') && txt.includes('Night Drive'), 'итоги не посчитались: ' + dbg);
+  check(await pg.$('[data-go="wrapped"][data-key="2025"]'), 'нет переключателя годов');
+  await pg.screenshot({ path: path.join(shots, 'wrapped.png'), fullPage: false });
+}, { init: "sessionStorage.setItem('seedHistory', '1');" });
 
 await scenario('обновление: кнопка в настройках показывает новую версию', async (pg) => {
   await pg.evaluate(() => sessionStorage.setItem('fakeUpdate', '1'));

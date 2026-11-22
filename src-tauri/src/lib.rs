@@ -27,6 +27,7 @@ use tauri::{AppHandle, Emitter, Manager, WebviewWindow};
 use tauri_plugin_dialog::DialogExt;
 
 mod desktop;
+mod net;
 
 const AUDIO_EXT: &[&str] = &[
     "mp3", "flac", "wav", "ogg", "oga", "opus", "m4a", "aac", "webm",
@@ -1251,7 +1252,23 @@ pub fn run() {
             desktop::set_thumb_playing,
             desktop::watch_folders,
             check_update,
-            install_update
+            install_update,
+            net::online_lyrics,
+            net::forget_online_lyrics,
+            net::search_covers,
+            net::lastfm_available,
+            net::lastfm_begin,
+            net::lastfm_finish,
+            net::lastfm_now_playing,
+            net::lastfm_scrobble,
+            net::listenbrainz_check,
+            net::listenbrainz_now_playing,
+            net::listenbrainz_submit,
+            net::discord_set,
+            net::cover_url_for,
+            net::read_tracks,
+            net::trash_file,
+            net::open_url
         ])
         .run(tauri::generate_context!())
         .expect("не удалось запустить Glow");

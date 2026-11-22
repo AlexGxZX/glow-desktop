@@ -15,6 +15,8 @@ import { applyAudio, applyVisualSettings, refreshTheme } from './ui.js';
 import { $, esc, fileSrc, invoke, toast } from './util.js';
 import { render } from './views.js';
 import { checkUpdates } from './updates.js';
+import { initOnline } from './online.js';
+import { initDrop } from './collection.js';
 
 // ================= Material 3: формы, волна от клика =================
 
@@ -170,6 +172,8 @@ export async function init() {
   applyDesktop();
   watchFolders();
   setTimeout(() => checkUpdates(false), 8000);
+  initOnline();
+  initDrop();
   if (settings.scanOnStart && settings.folders.length) scan();
   else setTimeout(() => relinkDialog(false), 800);
   // Своя иконка окна; ярлыки уже обновлены при выборе, их не трогаем.

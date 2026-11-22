@@ -5,7 +5,7 @@
 
 export const TAURI = window.__TAURI__;
 /** Версия приложения — держать в одном месте с tauri.conf.json и Cargo.toml. */
-export const APP_VERSION = '1.11.0';
+export const APP_VERSION = '1.12.0';
 export const invoke = (cmd, args) => (TAURI ? TAURI.core.invoke(cmd, args) : Promise.reject(new Error('Glow запущен не в приложении')));
 export const fileSrc = (p) => (TAURI ? TAURI.core.convertFileSrc(p, 'stream') : p);
 export const $ = (s, r = document) => r.querySelector(s);

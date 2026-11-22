@@ -1156,10 +1156,73 @@ body.md3.nav-compact .nav.active { font-weight: 600; }
 .set-tab.on { color: var(--on-btn, #000); background: var(--btn, var(--accent)); }
 body.square .set-tabs, body.square .set-tab { border-radius: 0; }
 .set-search {
-  margin-left: auto; display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; flex: 0 1 190px; min-width: 130px;
+  margin-left: auto; display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; flex: 1 1 120px; max-width: 200px; min-width: 110px;
   border-radius: 18px; background: var(--surface); border: 1px solid var(--line); color: var(--muted);
 }
 .set-search svg { width: 16px; height: 16px; flex: none; }
 .set-search input { flex: 1; min-width: 0; background: none; border: 0; outline: none; color: var(--text); font: inherit; }
 .set-empty { margin-top: 40px; text-align: center; }
 .set-group[hidden], .set-row[hidden], .set-empty[hidden] { display: none; }
+
+/* ===== Онлайн: обложки, тексты, настройки ===== */
+.oc-search { display: flex; gap: 8px; margin-bottom: 14px; }
+.oc-search .field { flex: 1; min-width: 0; }
+.oc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; min-height: 120px; }
+.oc-item { display: flex; flex-direction: column; gap: 6px; padding: 0; background: none; border: 0; cursor: pointer; color: var(--muted); text-align: left; }
+.oc-item img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: calc(var(--radius) - 4px); border: 2px solid transparent; transition: border-color .15s, transform .15s var(--ease); }
+.oc-item:hover img { border-color: var(--accent); transform: translateY(-2px); }
+.oc-msg { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 120px; }
+.oc-msg svg { width: 18px; height: 18px; }
+.ly-source { text-align: center; padding: 14px 0 4px; opacity: .8; }
+.ly-source .btn-text { font-size: inherit; padding: 0; }
+.lb-token { width: 170px; }
+#tg-online { display: inline-flex; align-items: center; gap: 6px; }
+#tg-online svg { width: 15px; height: 15px; }
+
+/* ===== Перетаскивание файлов ===== */
+.drop-over { position: fixed; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; pointer-events: none; opacity: 0; transition: opacity .18s; background: color-mix(in srgb, var(--bg) 55%, transparent); backdrop-filter: blur(6px); }
+.drop-over.show { opacity: 1; }
+.drop-card { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 34px 54px; border-radius: 28px; border: 2px dashed var(--accent); background: var(--strong); box-shadow: 0 0 80px -10px var(--accent); transform: scale(.96); transition: transform .2s var(--ease); }
+.drop-over.show .drop-card { transform: none; }
+.drop-card svg { width: 42px; height: 42px; color: var(--accent); }
+.drop-card .title { font-size: 20px; font-weight: 600; }
+.drop-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
+.drop-row { display: flex; align-items: center; gap: 12px; padding: 6px 4px; }
+.drop-row .r-cover, .dupe-row .r-cover, .wr-row .r-cover { width: 40px; height: 40px; flex: none; }
+
+/* ===== Дубликаты ===== */
+.dupe-hint { max-width: 760px; margin: -6px 0 18px; }
+.dupes { display: flex; flex-direction: column; gap: 14px; max-width: 980px; }
+.dupe-group { border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); overflow: hidden; }
+.dupe-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; }
+.dupe-row + .dupe-row { border-top: 1px solid var(--line); }
+.dupe-row.best { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.dupe-row .grow { min-width: 0; }
+.dupe-path { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .7; }
+.dupe-badge { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 9px; font-size: 11px; font-weight: 600; color: var(--on-btn, #000); background: var(--accent); vertical-align: 1px; }
+.dupe-spacer { width: 36px; flex: none; }
+.icon-btn.danger:hover { color: #ff7a7a; }
+
+/* ===== Итоги года ===== */
+.wr { max-width: 1060px; }
+.wr-hero { padding: 26px 0 18px; }
+.wr-big { font-size: clamp(64px, 9vw, 120px); font-weight: 800; line-height: 1; letter-spacing: -.03em; color: var(--accent); text-shadow: 0 0 calc(60px * var(--glow, .6)) color-mix(in srgb, var(--accent) 60%, transparent); }
+.wr-label { font-size: 20px; margin-top: 8px; color: var(--muted); }
+.wr-small { font-size: 20px !important; }
+.wr-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+.wr-row { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: calc(var(--radius) - 4px); cursor: pointer; }
+.wr-row:hover { background: var(--surface); }
+.wr-row .grow { min-width: 0; }
+.wr-n { width: 22px; text-align: right; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+.wr-albums { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
+.wr-album .card-art { aspect-ratio: 1; border-radius: var(--radius); overflow: hidden; margin-bottom: 8px; box-shadow: 0 10px 40px -14px var(--accent); }
+.wr-album .card-art > * { width: 100%; height: 100%; }
+.wr-bars { display: flex; align-items: flex-end; gap: 4px; height: 140px; padding-bottom: 18px; position: relative; }
+.wr-bars.hours { gap: 2px; }
+.wr-bar { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative; }
+.wr-bar > div { width: 100%; min-height: 2px; border-radius: 4px 4px 2px 2px; background: var(--accent); opacity: .85; box-shadow: 0 0 16px -4px var(--accent); }
+.wr-bar span { position: absolute; bottom: -18px; font-size: 11px; color: var(--muted); }
+.wr-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 28px; }
+.wr-fact { padding: 18px 20px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); }
+.wr-fact .r-title { font-size: 18px; margin-top: 6px; }
+@media (max-width: 1100px) { .wr-cols, .wr-facts { grid-template-columns: 1fr; } .wr-albums { grid-template-columns: repeat(3, 1fr); } }

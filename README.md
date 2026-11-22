@@ -51,6 +51,15 @@
 - Альбомы, исполнители, жанры, папки, плейлисты, избранное, оценки, история и статистика.
 - Подборки по правилам: «жанр — Lo-fi, год после 2020, оценка от 4».
 - Новые файлы в папках появляются сами. Переехавшие треки находятся без потери плейлистов.
+- Плейлисты `.m3u` из других плееров, перетаскивание файлов и папок прямо в окно.
+- Поиск дубликатов: Glow покажет, какая копия лучше по качеству, и аккуратно уберёт лишние.
+- «Итоги года»: минуты музыки, треки, исполнители и альбомы года, серии и любимое время суток.
+
+**Онлайн — по желанию**
+- Синхронные тексты из LRCLIB и обложки из iTunes и MusicBrainz — найденное сохраняется, дальше работает без сети.
+- Скробблинг в Last.fm и ListenBrainz: прослушивания копятся офлайн и уходят, когда появится интернет.
+- Статус «Слушает» в Discord с обложкой альбома.
+- Режим «Без интернета» — Glow не выходит в сеть совсем.
 - Редактор тегов и обложек, которые видят и Проводник, и другие плееры.
 
 **Windows**
@@ -63,11 +72,8 @@
 
 ## Скоро
 
-- **Синхронизация с телефоном по Wi-Fi** — плейлисты, оценки и история между Glow для ПК и Android без файлов.
-- **У каждого стиля своё лицо** — свои фоны, частицы и сцены экрана плеера: светящийся винил, кассета, светодиодная матрица, ночной город, жидкий свет, планета; у тем Material You — свои мотивы.
-- **Онлайн** — тексты из LRCLIB, поиск обложек, Last.fm и ListenBrainz, статус в Discord.
-- **Медиатека** — `.m3u`, перетаскивание файлов, поиск дубликатов, «Итоги года».
-- **Английский интерфейс.**
+- **1.13 — у каждого стиля своё лицо:** сцены экрана плеера (светящийся винил, кассета, светодиодная матрица, жидкий свет, планета), свои фоны и частицы, мотивы для тем Material You, новая сетка стилей.
+- **2.0 — Glow как экосистема:** ПК и телефон — одна медиатека с передачей музыки по Wi-Fi, звуковое ядро на Rust со всеми форматами, английский интерфейс.
 
 Подробнее — в [планах](docs/ROADMAP.md).
 
@@ -125,6 +131,6 @@ Glow — часть экосистемы: есть версия для Android (
 
 **Glow is a local music player for Windows that glows with the colors of the album art.** 28 themes (Liquid Glass, Material 3 with dynamic color, Holographic, Neo-Noir…), a custom theme editor, gapless playback and crossfade, a 10-band EQ, ReplayGain with built-in loudness analysis, synced lyrics, rule-based smart playlists, automatic library updates, tray and taskbar controls, global hotkeys and one-click updates. No accounts, no ads, no cloud — just your own music.
 
-Built with Tauri 2 and Rust; the UI is plain HTML/CSS/JS. The interface is in Russian for now — an English translation is coming in the next update, together with Wi-Fi sync with the Android app, online lyrics (LRCLIB), Last.fm scrobbling, Discord status and more distinctive themes. See the [roadmap](docs/ROADMAP.md).
+Built with Tauri 2 and Rust; the UI is plain HTML/CSS/JS. The interface is in Russian for now — an English translation is coming in 2.0, together with one shared library between the PC and Android apps over Wi-Fi. Online extras are already in: synced lyrics from LRCLIB, cover search, Last.fm and ListenBrainz scrobbling, Discord status. See the [roadmap](docs/ROADMAP.md).
 
 Download the installer from [Releases](../../releases/latest). To build from source: `npm install && npm run build`.

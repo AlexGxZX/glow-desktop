@@ -44,6 +44,14 @@ npx tauri signer generate -w "%USERPROFILE%\.tauri\glow.key"
 Репозиторий → **Settings → Secrets and variables → Actions → New repository secret**:
 - `TAURI_SIGNING_PRIVATE_KEY` — всё содержимое `glow.key`;
 - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — пароль из шага 2.
+- `GLOW_LASTFM_KEY` и `GLOW_LASTFM_SECRET` — API key и Shared secret приложения Glow на last.fm/api. Они попадают только в собранную программу, в открытом коде их нет. Без них кнопка «Подключить Last.fm» скажет, что в сборке нет ключа.
+
+Для своей сборки у себя на компьютере (необязательно):
+```
+set GLOW_LASTFM_KEY=...
+set GLOW_LASTFM_SECRET=...
+npm run build
+```
 
 ## Каждый релиз
 

@@ -7,9 +7,10 @@ import { loadCustom, getCustom, exportData, addImported, duplicateCustom, delete
 import { confirmModal, showMenu } from './dialogs.js';
 import { applyDesktop, scan, watchFolders } from './library.js';
 import { prepareNext, prev, renderNowRight } from './player.js';
-import { S, editor, meta, saveSettings, settings, track } from './state.js';
+import { S, curTrack, editor, meta, saveSettings, settings, track } from './state.js';
 import { applyAudio, applyVisualSettings, refreshTheme, viewHead } from './ui.js';
 import { $, APP_VERSION, esc, invoke, toast, tracksWord } from './util.js';
+import { pendingScrobbles, scheduleFlush, updateDiscord } from './online.js';
 import { render } from './views.js';
 
 // ================= Настройки =================
@@ -70,6 +71,7 @@ const SET_TABS = [
   ['look', 'Вид', 'palette', ['Мои стили', 'Стиль', 'Material You', 'Цвет', 'Стекло', 'Свечение и анимации', 'Иконка приложения']],
   ['player', 'Звук и плеер', 'eq', ['Звук и воспроизведение', 'Экран воспроизведения']],
   ['library', 'Медиатека', 'folder', ['Медиатека', 'Боковое меню']],
+  ['online', 'Онлайн', 'globe', ['Интернет', 'Скробблинг', 'Discord']],
   ['system', 'Система', 'settings', ['Трей и панель задач', 'Горячие клавиши', 'Обмен с Android', 'Данные и резервные копии']],
   ['about', 'О программе', 'info', ['О программе']],
 ];
@@ -105,7 +107,7 @@ export function renderSettings(c) {
   c.innerHTML = `<div class="settings">${viewHead({ title: 'Настройки', noCover: true, actions: false })}
     <div class="set-tabs">
       ${SET_TABS.map(([id, name, icon]) => `<button class="set-tab" data-settab="${id}">${I[icon] || ''}<span>${name}</span></button>`).join('')}
-      <label class="set-search">${I.search}<input id="set-q" placeholder="Найти настройку" value="${esc(S.setQuery || '')}" spellcheck="false"></label>
+      <label class="set-search">${I.search}<input id="set-q" placeholder="Поиск" value="${esc(S.setQuery || '')}" spellcheck="false"></label>
     </div>
     <div class="set-empty muted" hidden>Ничего не нашлось</div>
     <div class="set-group"><div class="heading">Медиатека</div><div class="set-card">
@@ -116,6 +118,8 @@ export function renderSettings(c) {
       ${row('Сканировать при запуске', 'При открытии Glow проверяет папки целиком', tog('scanOnStart', settings.scanOnStart))}
       ${row('Следить за папками', 'Скачал или скопировал трек — он появится в медиатеке сам, без перезапуска. Удалённые и изменённые файлы тоже обновятся', tog('watchFolders', settings.watchFolders))}
       ${row('Папка с текстами .lrc', settings.lyricsFolder ? `${esc(settings.lyricsFolder)} · найдено ${S.lrcIndex ? S.lrcIndex.size : 0}` : 'Тексты ищутся по имени файла или «Исполнитель - Название»', `<button class="btn" data-cmd="lrc-folder">${I.folder}${settings.lyricsFolder ? 'Сменить' : 'Выбрать'}</button>${settings.lyricsFolder ? `<button class="icon-btn" data-cmd="lrc-folder-clear" title="Убрать">${I.close}</button>` : ''}`)}
+      ${row('Дубликаты', 'Одинаковые треки в нескольких копиях: покажет, какая лучше по качеству, лишние можно отправить в корзину', `<button class="btn" data-go="dupes">${I.search}Найти</button>`)}
+      ${row('Плейлисты из других плееров', 'Импорт .m3u и .m3u8 — или просто перетащи файл плейлиста в окно Glow', `<button class="btn" data-cmd="m3u-import">${I.playlist}Импорт .m3u</button>`)}
       ${row('Пропавшие треки', 'Если файлы переместили или переименовали, Glow найдёт их по тегам и перенесёт плейлисты, оценки и историю', `<button class="btn" data-cmd="relink">${I.search}Найти</button>`)}
     </div></div>
 
@@ -185,6 +189,25 @@ export function renderSettings(c) {
     <div class="set-group"><div class="heading">Боковое меню</div><div class="set-card">
       ${row('Вид меню', 'Кнопка слева в заголовке окна или Ctrl+B прячет и возвращает меню', `<div class="chips">${[['full', 'Полное'], ['compact', 'Только иконки'], ['hidden', 'Скрыто']].map(([k, n]) => `<button class="chip${settings.sidebar.mode === k ? ' on' : ''}" data-navmode="${k}">${n}</button>`).join('')}</div>`)}
       ${row('Пункты и группы', 'Порядок, скрытые пункты, свои группы, закреплённые альбомы, исполнители и папки', `<button class="btn" data-cmd="nav-edit">${I.edit}Настроить</button>`)}
+    </div></div>
+
+    <div class="set-group"><div class="heading">Интернет</div><div class="set-card">
+      ${row('Без интернета', 'Glow не ходит в сеть совсем: ни тексты, ни обложки, ни скробблинг. Прослушивания копятся и уйдут, когда выключишь', tog('offline', settings.offline))}
+      ${row('Тексты песен из LRCLIB', 'Если у трека нет своего текста, Glow найдёт синхронный в открытой базе LRCLIB и сохранит у себя — дальше он работает без сети', tog('onlineLyrics', settings.onlineLyrics))}
+      ${row('Обложки из интернета', 'Правый клик по альбому или треку → «Изменить название и обложку» → «Найти в интернете». Источники: iTunes и MusicBrainz', '')}
+    </div></div>
+
+    <div class="set-group"><div class="heading">Скробблинг</div><div class="set-card">
+      ${row('Last.fm', settings.lfmSession ? `Подключён: ${esc(settings.lfmUser)}. Трек засчитывается, когда дослушан до половины или 4 минут` : 'Прослушивания попадут в твой профиль Last.fm. Откроется страница входа в браузере',
+        settings.lfmSession ? `<button class="btn" data-cmd="lfm-disconnect">${I.close}Отключить</button>` : `<button class="btn" data-cmd="lfm-connect">${I.globe}Подключить</button>`)}
+      ${row('ListenBrainz', settings.lbToken ? `Подключён: ${esc(settings.lbUser)}` : 'Открытая альтернатива Last.fm. Токен — на listenbrainz.org → Settings → User token',
+        settings.lbToken ? `<button class="btn" data-cmd="lb-disconnect">${I.close}Отключить</button>` : `<input class="field lb-token" id="lb-token" placeholder="Токен" spellcheck="false"><button class="btn" data-cmd="lb-connect">${I.check}Подключить</button>`)}
+      ${pendingScrobbles() ? row('Ждут отправки', `${pendingScrobbles()} прослушиваний — уйдут сами, когда появится интернет`, `<button class="btn" data-cmd="scrobble-flush">${I.refresh}Отправить сейчас</button>`) : ''}
+    </div></div>
+
+    <div class="set-group"><div class="heading">Discord</div><div class="set-card">
+      ${row('Статус «Слушает» в Discord', 'Друзья видят трек, исполнителя и сколько осталось. Нужен запущенный Discord на этом компьютере', tog('discord', settings.discord))}
+      ${row('Обложка в статусе', 'Glow ищет обложку альбома в iTunes, чтобы Discord её показал. Без этого — значок Glow', tog('discordCover', settings.discordCover))}
     </div></div>
 
     <div class="set-group"><div class="heading">Обмен с Android</div><div class="set-card">
@@ -290,6 +313,8 @@ export function afterSetting(key, rerender = true) {
   if (['style', 'accentMode', 'customAccent', 'glow', 'animations', 'contrast', 'md3Dynamic', 'md3Seed', 'md3Variant', 'md3Mode', 'glassBlur', 'glassAlpha', 'glassTint', 'glassLens'].includes(key)) refreshTheme();
   if (['replayGain', 'gapless', 'rgPreamp', 'crossfade'].includes(key)) { applyAudio(); prepareNext(); }
   if (key === 'watchFolders') { watchFolders(); if (settings.watchFolders) scan(true); }
+  if (['discord', 'discordCover', 'offline'].includes(key)) updateDiscord(curTrack());
+  if (key === 'offline' && !settings.offline) scheduleFlush(2000);
   if (['closeToTray', 'globalHotkeys', 'mediaKeys'].includes(key)) { applyDesktop().then(() => { if (S.view.name === 'settings') render($('#content').scrollTop); }); return; }
   if (['backdrop', 'coverMotion', 'particles', 'beatDelay', 'animations'].includes(key)) applyVisualSettings();
   if (key === 'nowSide' && S.nowOpen) renderNowRight();

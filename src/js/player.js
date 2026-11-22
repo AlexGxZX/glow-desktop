@@ -3,6 +3,7 @@
 import { I } from './icons.js';
 import { parseLrc, lineAt } from './lyrics.js';
 import { findLrcInFolder, measureTrack } from './features.js';
+import { fetchOnlineLyrics, onlineSeeked, onlineStateChanged, onlineTrackChanged, scrobbleTick } from './online.js';
 import { updateMediaSession } from './main.js';
 import { LS, S, curTrack, engine, favs, meta, saveMeta, saveSettings, settings, track, vis, visuals } from './state.js';
 import { coverHtml, isStudio, refreshTheme, starsHtml, techText } from './ui.js';
@@ -90,6 +91,7 @@ export function onTrackChanged() {
   S.listened = 0; S.counted = false; S.lastTime = 0;
   const ct = curTrack();
   invoke('set_tray_tip', { text: ct ? `${ct.title} — ${ct.artist || UNKNOWN_ARTIST}` : 'Glow' }).catch(() => {});
+  onlineTrackChanged(ct);
   if (settings.rgAuto && ct && !ct.missing && !ct.rg_track && !ct.rg_album && meta.rgCalc[ct.path] === undefined) setTimeout(() => measureTrack(ct), 2500);
   maybeExtend();
   prepareNext();
@@ -234,15 +236,18 @@ engine.addEventListener('statechange', () => {
   if ('mediaSession' in navigator) navigator.mediaSession.playbackState = engine.playing ? 'playing' : 'paused';
   if (!engine.playing && Date.now() - lastResumeSave > 1000) saveResume();
   if (S.thumbPlaying !== engine.playing) { S.thumbPlaying = engine.playing; invoke('set_thumb_playing', { playing: engine.playing }).catch(() => {}); }
+  onlineStateChanged(curTrack());
 });
 
 engine.addEventListener('timeupdate', () => {
   const t = engine.time;
   const d = t - S.lastTime;
   S.lastTime = t;
-  if (d < -2) { S.listened = 0; S.counted = false; } // повтор трека начался заново
+  if (d < -2) { S.listened = 0; S.counted = false; S.scrobbled = false; } // повтор трека начался заново
+  if (Math.abs(d) > 2) onlineSeeked(curTrack());
   if (engine.playing && d > 0 && d < 1.5) { S.listened += d; meta.listenSec = (meta.listenSec || 0) + d; }
   if (!S.counted && S.listened >= Math.min(30, (engine.duration || 60) * 0.5)) { S.counted = true; countPlay(curTrack()); }
+  if (!S.scrobbled) scrobbleTick(curTrack());
   updateProgress();
   updateLyricsLine();
   if (Date.now() - lastResumeSave > 5000) saveResume();
@@ -452,13 +457,16 @@ export function renderNowRight() {
   const t = curTrack();
   if (settings.nowSide === 'lyrics') {
     if (S.lyrics && S.lyricsFor === (t && t.path)) {
-      box.innerHTML = `<div class="lyrics${S.lyrics.synced ? '' : ' plain'}" id="ly">${S.lyrics.lines.map((l, i) => `<div class="ly" data-li="${i}" data-t="${l.t}">${esc(l.text) || '♪'}</div>`).join('')}</div>`;
+      box.innerHTML = `<div class="lyrics${S.lyrics.synced ? '' : ' plain'}" id="ly">${S.lyrics.lines.map((l, i) => `<div class="ly" data-li="${i}" data-t="${l.t}">${esc(l.text) || '♪'}</div>`).join('')}</div>`
+        + (S.lyricsOnline ? `<div class="ly-source caption">Текст из LRCLIB · <button class="btn-text" data-ncmd="lyrics-wrong">не тот текст</button></div>` : '');
       S.lyIdx = -1;
       updateLyricsLine(true);
+    } else if (S.lyricsSearching) {
+      box.innerHTML = `<div class="lyrics-empty">${I.globe}<div>Ищу текст в LRCLIB…</div></div>`;
     } else {
       box.innerHTML = `<div class="lyrics-empty">${I.lyrics}<div>Текста для этого трека нет</div>
-        <div class="actions" style="justify-content:center;margin:0"><button class="btn" data-ncmd="lyrics-edit">${I.edit}Ввести вручную</button><button class="btn" data-ncmd="lyrics-pick">${I.folder}Выбрать .lrc</button></div>
-        <div class="caption">Glow сам находит .lrc с тем же именем рядом с треком и текст в тегах.</div></div>`;
+        <div class="actions" style="justify-content:center;margin:0"><button class="btn" data-ncmd="lyrics-online">${I.globe}Найти в интернете</button><button class="btn" data-ncmd="lyrics-edit">${I.edit}Ввести вручную</button><button class="btn" data-ncmd="lyrics-pick">${I.folder}Выбрать .lrc</button></div>
+        <div class="caption">Glow сам находит .lrc рядом с треком, текст в тегах${settings.onlineLyrics && !settings.offline ? ' и в LRCLIB' : ''}.</div></div>`;
     }
   } else {
     let html = '<div class="upnext"><div class="overline q-label">Далее в очереди</div>';
@@ -473,9 +481,9 @@ export function renderNowRight() {
 }
 
 export let lyReq = 0;
-export async function loadLyrics() {
+export async function loadLyrics(force = false) {
   const t = curTrack();
-  S.lyrics = null; S.lyricsFor = null; S.lyIdx = -1;
+  S.lyrics = null; S.lyricsFor = null; S.lyIdx = -1; S.lyricsOnline = false; S.lyricsSearching = false;
   if (!t || t.missing) return;
   const req = ++lyReq;
   let text = meta.lyrics[t.path] || null;
@@ -485,6 +493,15 @@ export async function loadLyrics() {
     if (!text) { const p = findLrcInFolder(t); if (p) text = await invoke('read_text', { path: p }); }
   } catch { text = null; }
   if (req !== lyReq) return;
+  if (!text && settings.onlineLyrics && !settings.offline) {
+    // Своего текста нет — спросим LRCLIB. Найденное сохраняется, второй раз в сеть не пойдём.
+    S.lyricsSearching = true;
+    if (S.nowOpen && settings.nowSide === 'lyrics') renderNowRight();
+    const r = await fetchOnlineLyrics(t, force);
+    if (req !== lyReq) return;
+    S.lyricsSearching = false;
+    if (r) { text = r.text; S.lyricsOnline = true; }
+  }
   S.lyrics = parseLrc(text || '');
   S.lyricsFor = t.path;
   $('#b-lyrics').classList.toggle('on', !!S.lyrics);

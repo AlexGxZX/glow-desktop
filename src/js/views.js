@@ -7,12 +7,13 @@ import { evalSmart, ruleText } from './smart.js';
 import { S, SORTS, favs, meta, settings, sortTracks, stub, track } from './state.js';
 import { albumCard, artistCard, emptyHtml, folderArt, folderCard, folderName, listMeta, mountList, viewHead } from './ui.js';
 import { $, $$, UNKNOWN_ARTIST, esc, fmtLong, norm, plural, tracksWord } from './util.js';
+import { renderDupes, renderWrapped } from './collection.js';
 
 // ================= Навигация =================
 
 export const VIEW_TITLES = {
   tracks: 'Треки', albums: 'Альбомы', artists: 'Исполнители', genres: 'Жанры', folders: 'Папки',
-  favorites: 'Избранное', history: 'История', stats: 'Статистика', settings: 'Настройки',
+  favorites: 'Избранное', history: 'История', stats: 'Статистика', settings: 'Настройки', dupes: 'Дубликаты', wrapped: 'Итоги года',
 };
 export const SMART = {
   recent: 'Недавно добавленные', most: 'Часто слушаю', rated: 'Лучшие по оценкам', forgotten: 'Давно не слушал',
@@ -168,7 +169,7 @@ export const VIEWS = {
     const topArtists = [...byArtist.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
     const maxA = topArtists[0] ? topArtists[0][1] : 1;
     const libTime = S.tracks.reduce((s, t) => s + (t.duration || 0), 0);
-    c.innerHTML = viewHead({ title: 'Статистика', noCover: true, actions: false })
+    c.innerHTML = viewHead({ title: 'Статистика', noCover: true, actions: false, extra: `<button class="btn primary" data-go="wrapped">${I.star}Итоги года</button>` })
       + `<div class="stat-cards">
         <div class="stat"><div class="overline">Прослушиваний</div><div class="v">${plays}</div></div>
         <div class="stat"><div class="overline">Время в музыке</div><div class="v">${fmtLong(meta.listenSec || 0)}</div></div>
@@ -215,7 +216,7 @@ export const VIEWS = {
     const missing = list.filter((t) => t.missing).length;
     c.innerHTML = viewHead({
       title: pl.name, metaText: listMeta(list) + (missing ? ` · <span style="color:#ff8a8a">не найдено: ${missing}</span>` : ''), noCover: true,
-      extra: `<button class="btn" data-cmd="pl-rename" data-key="${esc(id)}">${I.edit}Переименовать</button><button class="btn danger" data-cmd="pl-delete" data-key="${esc(id)}">${I.trash}Удалить</button>`,
+      extra: `<button class="btn" data-cmd="pl-export" data-key="${esc(id)}">${I.down}Экспорт .m3u</button><button class="btn" data-cmd="pl-rename" data-key="${esc(id)}">${I.edit}Переименовать</button><button class="btn danger" data-cmd="pl-delete" data-key="${esc(id)}">${I.trash}Удалить</button>`,
     }) + '<div id="tl"></div>';
     if (!list.length) $('#tl').innerHTML = emptyHtml('playlist', 'Плейлист пуст', 'Добавляй треки через правый клик → «В плейлист».');
     else mountList($('#tl'), list, { playlistId: id });
@@ -237,6 +238,8 @@ export const VIEWS = {
   },
 
   settings(c) { renderSettings(c); },
+  dupes(c) { renderDupes(c); },
+  wrapped(c, year) { renderWrapped(c, year); },
 };
 
 export function whenText(ts) {
